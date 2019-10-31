@@ -17,8 +17,10 @@ public:
 
   std::optional<std::string> get_string(const std::string &key);
 
+  void reset(const std::string& args);
+
 private:
-  std::map<std::string, std::string> opt_map;
+  std::map<std::string, std::string> opt_map_;
 };
 
 #endif // TREEANT_OPTPARSER_H

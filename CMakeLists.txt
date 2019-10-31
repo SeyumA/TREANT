@@ -7,10 +7,12 @@ IF (NOT WIN32)
     endif(NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 
+set(CMAKE_CXX_STANDARD 17)
+
 IF (WIN32)
-    set(CMAKE_CXX_FLAGS "/Zi /std:c++17 /EHsc /MP /Wall /W4")
+    set(CMAKE_CXX_FLAGS "/Zi /EHsc /MP /Wall /W4")
 ELSE ()
-    SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -pthread -std=c++17 -fPIC -march=native")
+    SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -pthread -fPIC -march=native")
     SET(CMAKE_CXX_FLAGS_RELEASE "-Werror -O3 -s")
     SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 ENDIF ()
@@ -26,6 +28,6 @@ set(SOURCES
         include/OptParser.h
         # Sources
         src/Logger.cpp
-        src/OptParser.cpp)
+        src/OptParser.cpp include/utils.h src/utils.cpp)
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES} main.cpp)
