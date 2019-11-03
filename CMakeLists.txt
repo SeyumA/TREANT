@@ -20,14 +20,20 @@ ENDIF ()
 # Additional flags if needed
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} <...flags...>")
 
-include_directories(./include)
+include_directories(include)
 
 set(SOURCES
         # Headers
+        include/utils.h
         include/Logger.h
         include/OptParser.h
         # Sources
+        src/utils.cpp
         src/Logger.cpp
-        src/OptParser.cpp include/utils.h src/utils.cpp)
+        src/OptParser.cpp src/DecisionTree.cpp include/DecisionTree.h)
 
-add_executable(${CMAKE_PROJECT_NAME} ${SOURCES} main.cpp)
+# Build an object library
+add_library(treeant_lib OBJECT ${SOURCES})
+
+# Build the executable in the main
+add_executable(${CMAKE_PROJECT_NAME} main.cpp $<TARGET_OBJECTS:treeant_lib>)
