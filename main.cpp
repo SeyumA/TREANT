@@ -35,6 +35,7 @@ int main() {
     std::cout << "label_prediction is = " << label_prediction << std::endl;
   }
 
+  std::cout << "Just it" << std::endl;
   std::cout << "End of program" << std::endl;
   return 0;
 
