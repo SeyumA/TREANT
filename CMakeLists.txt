@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project (treeant)
 
+enable_testing()
+
 IF (NOT WIN32)
     if(NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE Release)
@@ -27,13 +29,19 @@ set(SOURCES
         include/utils.h
         include/Logger.h
         include/OptParser.h
+        include/DecisionTree.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
-        src/OptParser.cpp src/DecisionTree.cpp include/DecisionTree.h)
+        src/OptParser.cpp
+        src/DecisionTree.cpp)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})
 
 # Build the executable in the main
 add_executable(${CMAKE_PROJECT_NAME} main.cpp $<TARGET_OBJECTS:treeant_lib>)
+
+# Add tests
+add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
+add_test(NAME test_opt_parser COMMAND test_opt_parser)
