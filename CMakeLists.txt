@@ -30,11 +30,13 @@ set(SOURCES
         include/Logger.h
         include/OptParser.h
         include/DecisionTree.h
+        include/nodes/INode.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
-        src/DecisionTree.cpp)
+        src/DecisionTree.cpp
+        src/nodes/INode.cpp src/nodes/Leaf.cpp include/nodes/Leaf.h src/nodes/BinIntNode.cpp include/nodes/BinIntNode.h)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})
@@ -45,3 +47,6 @@ add_executable(${CMAKE_PROJECT_NAME} main.cpp $<TARGET_OBJECTS:treeant_lib>)
 # Add tests
 add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
 add_test(NAME test_opt_parser COMMAND test_opt_parser)
+
+add_executable(test_decision_tree tests/test_decision_tree.cpp $<TARGET_OBJECTS:treeant_lib>)
+add_test(NAME test_decision_tree COMMAND test_decision_tree)
