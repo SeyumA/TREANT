@@ -8,7 +8,7 @@
 #include "nodes/INode.h"
 
 /**
- * Binary integer node (partition in two parts depending on an integer value
+ * Binary integer node (partition in two parts depending on an integer value)
  */
 class BinIntNode : public INode {
 public:

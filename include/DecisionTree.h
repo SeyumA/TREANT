@@ -5,31 +5,36 @@
 #ifndef TREEANT_DECISIONTREE_H
 #define TREEANT_DECISIONTREE_H
 
-#include <functional>
-#include <iostream>
-#include <utility>
-#include <variant>
 #include <vector>
+#include <memory>  // shared_ptr
 
 #include "nodes/INode.h"
+#include "splitters/ISplitter.h"
 
-typedef std::vector<record_t> dataset_t;
+
+class ISplitter;
 
 class DecisionTree final {
 
 public:
   // Constructors
-  explicit DecisionTree(int depth, INode* root);
-  DecisionTree(dataset_t dataset);
+  explicit DecisionTree(const dataset_t &dataset, const std::size_t &maxDepth);
   // Destructor
   ~DecisionTree();
 
   // Functions
-  [[nodiscard]] int predict(const record_t& r) const;
+  static std::pair<INode *, std::size_t>
+  buildRecursively(const dataset_t &dataset,
+                   const std::vector<unsigned long> &subset,
+                   const ISplitter* splitter, const std::size_t &currDepth,
+                   const std::size_t &maxDepth);
+
+  [[nodiscard]] int predict(const record_t &r) const;
 
 private:
-  int depth;
-  INode* root = nullptr;
+  unsigned int depth;
+  INode *root = nullptr;
+  std::shared_ptr<ISplitter> splitter;
 };
 
 #endif // TREEANT_DECISIONTREE_H

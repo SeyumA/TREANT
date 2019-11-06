@@ -9,9 +9,7 @@
 #include <vector>
 #include <string>
 
-// Insert in the variant the types allowed
-typedef std::variant<int, std::string> feature_t;
-typedef std::vector<feature_t> record_t;
+#include "types.h"
 
 class INode {
 public:

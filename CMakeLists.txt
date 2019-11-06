@@ -27,16 +27,24 @@ include_directories(include)
 set(SOURCES
         # Headers
         include/utils.h
+        include/types.h
         include/Logger.h
         include/OptParser.h
         include/DecisionTree.h
-        include/nodes/INode.h
+        include/nodes/Leaf.h
+        include/nodes/BinIntNode.h
+        include/splitters/ISplitter.h
+        include/splitters/DummySplitter.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
         src/DecisionTree.cpp
-        src/nodes/INode.cpp src/nodes/Leaf.cpp include/nodes/Leaf.h src/nodes/BinIntNode.cpp include/nodes/BinIntNode.h)
+        src/nodes/INode.cpp
+        src/nodes/Leaf.cpp
+        src/nodes/BinIntNode.cpp
+        src/splitters/ISplitter.cpp
+        src/splitters/DummySplitter.cpp include/nodes/INode.h)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})
