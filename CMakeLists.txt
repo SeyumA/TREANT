@@ -28,23 +28,25 @@ set(SOURCES
         # Headers
         include/utils.h
         include/types.h
+        include/nodes/INode.h
         include/Logger.h
         include/OptParser.h
-        include/DecisionTree.h
         include/nodes/Leaf.h
         include/nodes/BinIntNode.h
+        include/nodes/BooleanNode.h
         include/splitters/ISplitter.h
         include/splitters/DummySplitter.h
+        include/DecisionTree.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
-        src/DecisionTree.cpp
-        src/nodes/INode.cpp
         src/nodes/Leaf.cpp
         src/nodes/BinIntNode.cpp
-        src/splitters/ISplitter.cpp
-        src/splitters/DummySplitter.cpp include/nodes/INode.h)
+        src/nodes/BooleanNode.cpp
+        src/splitters/DummySplitter.cpp
+        src/DecisionTree.cpp
+        )
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})

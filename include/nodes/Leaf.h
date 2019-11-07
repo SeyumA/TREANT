@@ -10,9 +10,16 @@
 class Leaf : public INode {
 public:
   // Constructors
+  Leaf() = delete;
+  Leaf(Leaf&) = delete;
+  Leaf(Leaf&&) = delete;
   explicit Leaf(int label);
+
   // Functions
-  [[nodiscard]] int predict(record_t) const override;
+  [[nodiscard]] int predict(const record_t&) const override;
+
+  [[nodiscard]] std::vector<INode*> getChildren() const override;
+  void setChild(std::size_t index, INode* newNodePtr) override;
 
 private:
   int label;
