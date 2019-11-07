@@ -3,7 +3,6 @@
 //
 
 #include <map>
-#include <memory>
 
 #include "nodes/BooleanNode.h"
 #include "nodes/Leaf.h"
@@ -59,7 +58,7 @@ DummySplitter::split(const dataset_t &dataset,
   const auto firstRecord = dataset[0].first;
   // We store the impurity measures for each feature choice
   std::map<double,
-           std::pair<std::shared_ptr<INode>, std::vector<dataset_partition_t>>>
+           std::pair<INode*, std::vector<dataset_partition_t>>>
       impurityToPartitions;
 
   // Work on each column, i.e. on each feature type
@@ -82,7 +81,7 @@ DummySplitter::split(const dataset_t &dataset,
       // TODO: find impurity
       double impurity = 0.0;
       impurityToPartitions[impurity] =
-          std::make_pair(std::make_shared<INode>(Leaf(0)), falseAndTrueSubsets);
+          std::make_pair(new Leaf(0), falseAndTrueSubsets);
 
     } else if (std::get_if<std::int32_t>(std::addressof(headerFeature))) {
       // std::int32_t case
@@ -93,9 +92,15 @@ DummySplitter::split(const dataset_t &dataset,
     } else {
       throw std::runtime_error("Missing feature types in DummySplitter");
     }
-
-    auto [bestNodeSharedPtr, bestNodePartitions] =
-        impurityToPartitions.rbegin()->second;
-    return std::make_pair(bestNodeSharedPtr.get(), bestNodePartitions);
+    // Pick the one with the smallest impurity
+    auto it = impurityToPartitions.begin();
+    auto res = it->second;
+    ++it;
+    while (it != impurityToPartitions.end()) {
+      // Deallocate all unused nodes in order to avoid memory leaks
+      delete it->second.first;
+      it++;
+    }
+    return res;
   }
 }
