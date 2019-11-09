@@ -53,4 +53,14 @@ std::map<std::string, std::string> get_options_map(const std::string& args_c) {
   return res;
 }
 
+std::vector<std::string> splitString(const std::string& s, char delimiter) {
+  std::vector<std::string> tokens;
+  std::string token;
+  std::istringstream iss(s);
+  while (std::getline(iss, token, delimiter)) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
 }

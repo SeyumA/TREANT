@@ -17,6 +17,9 @@ class DecisionTree final {
 
 public:
   // Constructors
+  DecisionTree() = delete;
+  DecisionTree(DecisionTree&) = delete;
+  DecisionTree(DecisionTree&&) = delete;
   explicit DecisionTree(const dataset_t &dataset, const std::size_t &maxDepth);
   // Destructor
   ~DecisionTree();

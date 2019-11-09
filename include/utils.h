@@ -12,6 +12,8 @@ namespace utils {
 
 std::map<std::string, std::string> get_options_map(const std::string& args);
 
+std::vector<std::string> splitString(const std::string& s, char delimiter = ' ');
+
 }
 
 #endif // TREEANT_UTILS_H

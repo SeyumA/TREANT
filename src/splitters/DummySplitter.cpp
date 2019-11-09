@@ -41,17 +41,17 @@ DummySplitter::split(const dataset_t &dataset,
   }
   //
   // If we are at the bottom level we should return a Leaf with the
-  // most popular label
+  // most frequent label
   if (isLastLevel) {
-    label_t mostPopular = detectedLabels.begin()->first;
-    frequency_t frequencyMostPopular = detectedLabels.begin()->second;
+    label_t mostFrequent = detectedLabels.begin()->first;
+    frequency_t higherFrequency = detectedLabels.begin()->second;
     for (const auto &[l, f] : detectedLabels) {
-      if (f > frequencyMostPopular) {
-        mostPopular = l;
-        frequencyMostPopular = f;
+      if (f > higherFrequency) {
+        mostFrequent = l;
+        higherFrequency = f;
       }
     }
-    return std::make_pair(new Leaf(mostPopular),
+    return std::make_pair(new Leaf(mostFrequent),
                           std::vector<dataset_partition_t>());
   }
   //
@@ -92,15 +92,16 @@ DummySplitter::split(const dataset_t &dataset,
     } else {
       throw std::runtime_error("Missing feature types in DummySplitter");
     }
-    // Pick the one with the smallest impurity
-    auto it = impurityToPartitions.begin();
-    auto res = it->second;
-    ++it;
-    while (it != impurityToPartitions.end()) {
-      // Deallocate all unused nodes in order to avoid memory leaks
-      delete it->second.first;
-      it++;
-    }
-    return res;
+  }  // End of loop over the columns
+  //
+  // Pick the one with the smallest impurity
+  auto it = impurityToPartitions.begin();
+  auto res = it->second;
+  ++it;
+  // Release memory in order to avoid memory leaks
+  while (it != impurityToPartitions.end()) {
+    delete it->second.first;
+    it++;
   }
+  return res;
 }

@@ -13,6 +13,8 @@ public:
   /**
    * The returned INode pointer must have the proper children, especially in the
    * case of continuous features (integers or floating points for example)
+   * If we are in the last level we should return a leaf chosen with some
+   * criteria: for example the most frequent label in the subset.
    * @param dataset is the original training set
    * @param subset a part of the dataset
    * @param isLastLevel boolean flag -> are we at the last tree level?

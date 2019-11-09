@@ -46,7 +46,7 @@ set(SOURCES
         src/nodes/BooleanNode.cpp
         src/splitters/DummySplitter.cpp
         src/DecisionTree.cpp
-        )
+        src/Dataset.cpp include/Dataset.h)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})
