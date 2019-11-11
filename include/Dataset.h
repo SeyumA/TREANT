@@ -6,9 +6,9 @@
 #define TREEANT_DATASET_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include <features/IFeatureVector.h>
 
@@ -24,22 +24,29 @@ public:
                    const std::string &labelFilePath);
 
   [[nodiscard]] std::size_t size() const;
+  [[nodiscard]] const std::vector<std::int32_t> &getLabels() const;
+  [[nodiscard]] const std::vector<std::shared_ptr<IFeatureVector>> &
+  getFeatureColumns() const;
 
   // TODO: implement accessors []
 
-
 private:
   std::vector<FeatureTypes> headers_;
-  std::vector<std::shared_ptr<IFeatureVector>> featureVectors_;
+  std::vector<std::shared_ptr<IFeatureVector>> featureColumns_;
   std::vector<std::int32_t> labelVector_;
 };
 
 class DataSubset final {
 public:
+  explicit DataSubset(const Dataset &parent);
   explicit DataSubset(const Dataset &parent,
-                      std::vector<std::size_t>&& validIndexes);
+                      std::vector<std::size_t> &&validIndexes);
 
   // TODO: implement accessors []
+
+  [[nodiscard]] std::int32_t getMostFrequentLabel() const;
+  [[nodiscard]] std::pair<INode *, std::vector<std::vector<std::size_t>>>
+      getBestSplit() const;
 
 private:
   const Dataset &parent_;

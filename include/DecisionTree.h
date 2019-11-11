@@ -10,6 +10,7 @@
 
 #include "nodes/INode.h"
 #include "splitters/ISplitter.h"
+#include "Dataset.h"
 
 class ISplitter;
 
@@ -20,15 +21,16 @@ public:
   DecisionTree() = delete;
   DecisionTree(DecisionTree&) = delete;
   DecisionTree(DecisionTree&&) = delete;
-  explicit DecisionTree(const dataset_t &dataset, const std::size_t &maxDepth);
+
+  explicit DecisionTree(const Dataset &dataset, const std::size_t &maxDepth);
+
   // Destructor
   ~DecisionTree();
 
   // Functions
   static std::pair<INode *, std::size_t>
-  buildRecursively(const dataset_t &dataset,
-                   const std::vector<unsigned long> &subset,
-                   const ISplitter *splitter, const std::size_t &maxHeight,
+  buildRecursively(const DataSubset &dataSubset,
+                   const std::size_t &maxHeight,
                    const std::size_t &currDepth);
 
   [[nodiscard]] int predict(const record_t &r) const;
@@ -36,7 +38,6 @@ public:
 private:
   unsigned int height_;
   INode *root_ = nullptr;
-  std::shared_ptr<ISplitter> splitter_;
 };
 
 #endif // TREEANT_DECISIONTREE_H

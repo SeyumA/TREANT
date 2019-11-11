@@ -5,14 +5,10 @@
 #include <cassert>
 
 #include "DecisionTree.h"
-//#include "nodes/BinIntNode.h"
-//#include "nodes/Leaf.h"
 
 int main() {
-  dataset_t dataset = {
-      {{false, 22}, 0},
-      {{true, 55}, 1}
-  };
+  // TODO: pass the right paths to the files
+  Dataset dataset("", "");
 
   DecisionTree dt(dataset, 1);
 

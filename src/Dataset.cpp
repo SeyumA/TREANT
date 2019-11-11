@@ -8,6 +8,7 @@
 #include <features/DoubleFeatureVector.h>
 #include <features/IntFeatureVector.h>
 #include <fstream>
+#include <numeric>
 #include <sstream>
 #include <utility>
 
@@ -39,7 +40,7 @@ Dataset::Dataset(const std::string &featureFilePath,
       }
     }
 
-    // Working code ----------------------------------
+    // Working code (to be deleted) ----------------------------------
     //    const auto types = utils::splitString(line);
     //    for (const auto &type : types) {
     //      if (type == "BOOL") {
@@ -57,7 +58,7 @@ Dataset::Dataset(const std::string &featureFilePath,
   }
   //
   // Build the records
-  // Matrix of strings
+  // Matrix of strings useful as support matrix in order to build columns
   std::vector<std::vector<std::string>> columnsAsStrings(headers_.size());
   //
   while (std::getline(ifs, line)) {
@@ -93,7 +94,7 @@ Dataset::Dataset(const std::string &featureFilePath,
               "Boolean feature can be only '1', '0', 'true', 'false'");
         }
       }
-      featureVectors_.push_back(std::make_shared<BoolFeatureVector>(
+      featureColumns_.push_back(std::make_shared<BoolFeatureVector>(
           BoolFeatureVector(std::move(column))));
       break;
     }
@@ -102,7 +103,7 @@ Dataset::Dataset(const std::string &featureFilePath,
       for (std::size_t i = 0; i < columnsAsStrings[j].size(); i++) {
         column[i] = std::stoi(columnsAsStrings[j][i]);
       }
-      featureVectors_.push_back(std::make_shared<IntFeatureVector>(
+      featureColumns_.push_back(std::make_shared<IntFeatureVector>(
           IntFeatureVector(std::move(column))));
       break;
     }
@@ -111,7 +112,7 @@ Dataset::Dataset(const std::string &featureFilePath,
       for (std::size_t i = 0; i < columnsAsStrings[j].size(); i++) {
         column[i] = std::stod(columnsAsStrings[j][i]);
       }
-      featureVectors_.push_back(std::make_shared<DoubleFeatureVector>(
+      featureColumns_.push_back(std::make_shared<DoubleFeatureVector>(
           DoubleFeatureVector(std::move(column))));
       break;
     }
@@ -140,10 +141,54 @@ Dataset::Dataset(const std::string &featureFilePath,
   ifs.close();
 }
 
-std::size_t Dataset::size() const {
-  return featureVectors_.size() * featureVectors_[0]->size();
+std::size_t Dataset::size() const { return featureColumns_[0]->size(); }
+
+const std::vector<std::int32_t> &Dataset::getLabels() const {
+  return labelVector_;
 }
 
+const std::vector<std::shared_ptr<IFeatureVector>> &
+Dataset::getFeatureColumns() const {
+  return featureColumns_;
+}
+
+DataSubset::DataSubset(const Dataset &parent)
+    : parent_(parent), validIndexes_([&parent]() {
+        std::vector<std::size_t> indexes(parent.size());
+        std::iota(indexes.begin(), indexes.end(), 0);
+        return indexes;
+      }()) {}
+
 DataSubset::DataSubset(const Dataset &parent,
-                       std::vector<std::size_t>&& validIndexes)
+                       std::vector<std::size_t> &&validIndexes)
     : parent_(parent), validIndexes_(validIndexes) {}
+
+std::int32_t DataSubset::getMostFrequentLabel() const {
+  const auto &labels = parent_.getLabels();
+  std::map<std::int32_t, std::size_t> labelToFrequency;
+  // WARNING: Always work on the subset!
+  for (const auto &index : validIndexes_) {
+    const auto &label = labels[index];
+    if (labelToFrequency.find(label) == labelToFrequency.end()) {
+      labelToFrequency[label] = 1;
+    } else {
+      labelToFrequency[label] += 1;
+    }
+  }
+  auto mostFrequentLabel = labelToFrequency.begin()->first;
+  auto freq = labelToFrequency.begin()->second;
+  for (const auto &[la, fr] : labelToFrequency) {
+    if (fr > freq) {
+      mostFrequentLabel = la;
+      freq = fr;
+    }
+  }
+  return mostFrequentLabel;
+}
+
+std::pair<INode *, std::vector<std::vector<std::size_t>>>
+DataSubset::getBestSplit() const {
+  // TODO: implement this, remember to set the right featureIndex in the node
+  std::vector<std::vector<std::size_t>> res;
+  return std::make_pair(nullptr, res);
+}
