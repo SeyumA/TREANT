@@ -37,6 +37,10 @@ set(SOURCES
         include/splitters/ISplitter.h
         include/splitters/DummySplitter.h
         include/DecisionTree.h
+        include/features/IFeatureVector.h
+        include/features/IntFeatureVector.h
+        include/features/BoolFeatureVector.h
+        include/features/DoubleFeatureVector.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
@@ -46,7 +50,11 @@ set(SOURCES
         src/nodes/BooleanNode.cpp
         src/splitters/DummySplitter.cpp
         src/DecisionTree.cpp
-        src/Dataset.cpp include/Dataset.h)
+        src/Dataset.cpp include/Dataset.h
+        src/features/IFeatureVector.cpp
+        src/features/IntFeatureVector.cpp
+        src/features/BoolFeatureVector.cpp
+        src/features/DoubleFeatureVector.cpp)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})

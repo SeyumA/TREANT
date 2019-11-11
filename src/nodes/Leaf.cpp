@@ -9,6 +9,8 @@
 
 Leaf::Leaf(int label) : label(label) {}
 
+Leaf::~Leaf() = default;
+
 int Leaf::predict(const record_t &) const { return label; }
 
 std::vector<INode *> Leaf::getChildren() const {
@@ -17,4 +19,9 @@ std::vector<INode *> Leaf::getChildren() const {
 
 void Leaf::setChild(std::size_t, INode *) {
   throw std::runtime_error("Leaf::setChild() error: Leaf node has no child");
+}
+
+void Leaf::setFeatureIndex(std::size_t) {
+  throw std::runtime_error(
+      "You are not allowed to call setFeatureIndex on a Leaf");
 }

@@ -12,9 +12,6 @@
  */
 class BinIntNode : public INode {
 public:
-  BinIntNode() = delete;
-  BinIntNode(BinIntNode&) = delete;
-  BinIntNode(BinIntNode&&) = delete;
   explicit BinIntNode(int featureIndex, int v, INode *leftChild,
                       INode *rightChild);
 
@@ -24,9 +21,10 @@ public:
 
   [[nodiscard]] std::vector<INode*> getChildren() const override;
   void setChild(std::size_t index, INode* newNodePtr) override;
+  void setFeatureIndex(std::size_t index) override;
 
 private:
-  int featureIndex;
+  int featureIndex_;
   int v;
   INode *leftChild = nullptr;
   INode *rightChild = nullptr;

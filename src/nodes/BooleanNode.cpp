@@ -5,13 +5,16 @@
 #include "nodes/BooleanNode.h"
 #include <stdexcept>
 
+BooleanNode::BooleanNode(std::size_t featureIndex)
+    : featureIndex_(featureIndex) {}
+
 BooleanNode ::~BooleanNode() {
   delete leftChild;
   delete rightChild;
 }
 
-int BooleanNode::predict(const record_t& r) const {
-  if (std::get<bool>(r[featureIndex])) {
+int BooleanNode::predict(const record_t &r) const {
+  if (std::get<bool>(r[featureIndex_])) {
     return leftChild->predict(r);
   } else {
     return rightChild->predict(r);
@@ -32,3 +35,5 @@ void BooleanNode::setChild(std::size_t index, INode *newNodePtr) {
         "Invalid usage of setChild in BinIntNode, index is invalid");
   }
 }
+
+void BooleanNode::setFeatureIndex(std::size_t index) { featureIndex_ = index; }

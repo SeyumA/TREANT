@@ -10,19 +10,19 @@
 class Leaf : public INode {
 public:
   // Constructors
-  Leaf() = delete;
-  Leaf(Leaf&) = delete;
-  Leaf(Leaf&&) = delete;
   explicit Leaf(int label);
+  // Destructor
+  ~Leaf() override;
 
   // Functions
   [[nodiscard]] int predict(const record_t&) const override;
 
   [[nodiscard]] std::vector<INode*> getChildren() const override;
   void setChild(std::size_t index, INode* newNodePtr) override;
+  void setFeatureIndex(std::size_t index) override;
 
 private:
-  int label;
+  std::int32_t label;
 };
 
 

@@ -17,6 +17,7 @@ public:
 
   [[nodiscard]] virtual std::vector<INode*> getChildren() const = 0;
   virtual void setChild(std::size_t index, INode* newNodePtr) = 0;
+  virtual void setFeatureIndex(std::size_t index) = 0;
 };
 
 #endif // TREEANT_INODE_H

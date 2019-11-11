@@ -10,10 +10,7 @@
 class BooleanNode : public INode {
 public:
   // Constructors
-  BooleanNode() = delete;
-  BooleanNode(BooleanNode&) = delete;
-  BooleanNode(BooleanNode&&) = delete;
-  explicit BooleanNode(unsigned featureIndex) : featureIndex(featureIndex) {}
+  explicit BooleanNode(std::size_t featureIndex);
   // Destructor
   ~BooleanNode() override;
 
@@ -21,9 +18,10 @@ public:
 
   [[nodiscard]] std::vector<INode *> getChildren() const override;
   void setChild(std::size_t index, INode *newNodePtr) override;
+  void setFeatureIndex(std::size_t index) override;
 
 private:
-  unsigned featureIndex;
+  unsigned featureIndex_;
   INode *leftChild = nullptr;
   INode *rightChild = nullptr;
 };

@@ -5,6 +5,7 @@
 #include "DecisionTree.h"
 #include "Logger.h"
 #include "OptParser.h"
+#include "Dataset.h"
 
 struct Collection {
 
@@ -20,64 +21,10 @@ struct Collection {
   std::vector<int> validIndexes_;
 };
 
-struct IColumn {
-  [[nodiscard]] virtual std::vector<std::vector<std::size_t>>
-  classify() const = 0;
-};
-
-struct Int32Column : public IColumn {
-  [[nodiscard]] std::vector<std::vector<std::size_t>>
-  classify() const override {
-    auto partitions = std::vector<std::vector<std::size_t>>();
-    std::cout << "Calling Int32Column classify()\n";
-    return partitions;
-  }
-
-  void print() {
-
-  }
-};
-
-struct BoolColumn : public IColumn {
-  [[nodiscard]] std::vector<std::vector<std::size_t>>
-  classify() const override {
-    auto partitions = std::vector<std::vector<std::size_t>>();
-    std::cout << "Calling BoolColumn classify()\n";
-    return partitions;
-  }
-};
-
-struct MyDataset {
-
-  MyDataset() {
-    //    IColumn firstCol;
-    columns.push_back(std::make_shared<Int32Column>(Int32Column()));
-    columns.push_back(std::make_shared<BoolColumn>(BoolColumn()));
-
-
-    std::shared_ptr<IColumn> firstCol (new Int32Column);
-    columns.push_back(std::move(firstCol));
-
-    std::shared_ptr<IColumn> secondCol (new BoolColumn);
-    columns.push_back(std::move(secondCol));
-//    BoolColumn secondCol;
-//    columns.push_back(std::make_shared<IColumn>(secondCol));
-  }
-
-  void classifyColumns() {
-    for (auto col : columns) {
-      auto partitions = col->classify();
-    }
-  }
-
-  std::vector<std::shared_ptr<IColumn>> columns;
-};
-
 int main() {
   std::cout << "Start of the program" << std::endl;
 
-  MyDataset myDataset;
-  myDataset.classifyColumns();
+  Dataset myDataset("", "");
 
   Collection c;
   c.data_ = {1, 2, 3, 4, 5, 6};
