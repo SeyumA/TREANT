@@ -18,7 +18,8 @@ Dataset::Dataset(const std::string &featureFilePath,
     throw std::runtime_error("The record file stream is not open or not good");
   }
   //
-  // Read the header with the types
+  // Read the header with the types. For each type we should be able to store
+  // the proper column type (BoolColumn, Int32Column, ...)
   std::string line;
   if (std::getline(ifs, line)) {
     std::istringstream is(line);
