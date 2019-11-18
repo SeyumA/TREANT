@@ -3,6 +3,7 @@
 //
 
 #include "features/BoolFeatureVector.h"
+#include "visitors/IFeatureVectorVisitor.h"
 #include <nodes/BooleanNode.h>
 
 BoolFeatureVector::BoolFeatureVector(std::vector<bool> &&features)
@@ -28,3 +29,8 @@ BoolFeatureVector::split(const std::vector<std::size_t> &validIndexes) const {
 }
 
 std::size_t BoolFeatureVector::size() const { return features_.size(); }
+
+void BoolFeatureVector::accept(IFeatureVectorVisitor *visitor,
+                               const indexes_t &validIndexes) const {
+  visitor->visit(this, validIndexes);
+}

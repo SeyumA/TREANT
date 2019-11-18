@@ -19,6 +19,9 @@ public:
   split(const std::vector<std::size_t> &validIndexes) const override;
   [[nodiscard]] std::size_t size() const override;
 
+  void accept(IFeatureVectorVisitor *visitor,
+              const indexes_t &validIndexes) const override;
+
 private:
   std::vector<std::int32_t> features_;
 };

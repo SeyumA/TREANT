@@ -3,6 +3,7 @@
 //
 
 #include "features/DoubleFeatureVector.h"
+#include "visitors/IFeatureVectorVisitor.h"
 
 DoubleFeatureVector::DoubleFeatureVector(std::vector<double> &&features)
     : features_(std::move(features)) {}
@@ -18,3 +19,8 @@ DoubleFeatureVector::split(const std::vector<std::size_t> &validIndexes) const {
 }
 
 std::size_t DoubleFeatureVector::size() const { return features_.size(); }
+
+void DoubleFeatureVector::accept(IFeatureVectorVisitor *visitor,
+                                 const indexes_t &validIndexes) const {
+  visitor->visit(this, validIndexes);
+}

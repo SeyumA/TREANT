@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "types.h"
 #include <features/IFeatureVector.h>
 
 /**
@@ -28,8 +29,6 @@ public:
   [[nodiscard]] const std::vector<std::shared_ptr<IFeatureVector>> &
   getFeatureColumns() const;
 
-  // TODO: implement accessors []
-
 private:
   std::vector<FeatureTypes> headers_;
   std::vector<std::shared_ptr<IFeatureVector>> featureColumns_;
@@ -44,13 +43,12 @@ public:
 
   // TODO: implement accessors []
 
-  [[nodiscard]] std::int32_t getMostFrequentLabel() const;
-  [[nodiscard]] std::pair<INode *, std::vector<std::vector<std::size_t>>>
-      getBestSplit() const;
+  [[nodiscard]] std::size_t getSize() const;
+  [[nodiscard]] std::pair<label_t, frequency_t> getMostFrequentLabel() const;
 
 private:
   const Dataset &parent_;
-  std::vector<std::size_t> validIndexes_;
+  indexes_t validIndexes_;
 };
 
 #endif // TREEANT_DATASET_H

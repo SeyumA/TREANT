@@ -21,7 +21,7 @@ public:
    * @return an INode with the children already there (if not a leaf)
    */
   [[nodiscard]] std::pair<INode *, std::vector<dataset_partition_t>>
-  split(const dataset_t &dataset, const dataset_partition_t &subset,
+  split(const std::shared_ptr<IFeatureVector> &subset,
         bool isLastLevel) const override;
 };
 

@@ -11,7 +11,7 @@ Leaf::Leaf(int label) : label(label) {}
 
 Leaf::~Leaf() = default;
 
-int Leaf::predict(const record_t &) const { return label; }
+//int Leaf::predict(const record_t &) const { return label; }
 
 std::vector<INode *> Leaf::getChildren() const {
   throw std::runtime_error("Leaf::getChildren() error: Leaf node has no child");

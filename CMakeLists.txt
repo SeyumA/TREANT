@@ -31,6 +31,7 @@ set(SOURCES
         include/nodes/INode.h
         include/Logger.h
         include/OptParser.h
+        include/nodes/INode.h
         include/nodes/Leaf.h
         include/nodes/BinIntNode.h
         include/nodes/BooleanNode.h
@@ -41,10 +42,13 @@ set(SOURCES
         include/features/IntFeatureVector.h
         include/features/BoolFeatureVector.h
         include/features/DoubleFeatureVector.h
+        include/visitors/IFeatureVectorVisitor.h
+        include/visitors/ImpurityVisitor.h
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
+        src/nodes/INode.cpp
         src/nodes/Leaf.cpp
         src/nodes/BinIntNode.cpp
         src/nodes/BooleanNode.cpp
@@ -54,7 +58,8 @@ set(SOURCES
         src/features/IFeatureVector.cpp
         src/features/IntFeatureVector.cpp
         src/features/BoolFeatureVector.cpp
-        src/features/DoubleFeatureVector.cpp)
+        src/features/DoubleFeatureVector.cpp
+        src/visitors/ImpurityVisitor.cpp)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})

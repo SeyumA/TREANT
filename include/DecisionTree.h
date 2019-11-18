@@ -33,8 +33,6 @@ public:
                    const std::size_t &maxHeight,
                    const std::size_t &currDepth);
 
-  [[nodiscard]] int predict(const record_t &r) const;
-
 private:
   unsigned int height_;
   INode *root_ = nullptr;

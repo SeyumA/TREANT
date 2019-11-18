@@ -15,7 +15,7 @@ public:
   ~Leaf() override;
 
   // Functions
-  [[nodiscard]] int predict(const record_t&) const override;
+  //[[nodiscard]] int predict(const record_t&) const override;
 
   [[nodiscard]] std::vector<INode*> getChildren() const override;
   void setChild(std::size_t index, INode* newNodePtr) override;

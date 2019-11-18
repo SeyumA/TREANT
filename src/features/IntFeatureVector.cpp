@@ -3,6 +3,7 @@
 //
 
 #include "features/IntFeatureVector.h"
+#include "visitors/IFeatureVectorVisitor.h"
 
 IntFeatureVector::IntFeatureVector(std::vector<std::int32_t> &&features)
     : features_(std::move(features)) {}
@@ -18,3 +19,8 @@ IntFeatureVector::split(const std::vector<std::size_t> &validIndexes) const {
 }
 
 std::size_t IntFeatureVector::size() const { return features_.size(); }
+
+void IntFeatureVector::accept(IFeatureVectorVisitor *visitor,
+                                 const indexes_t &validIndexes) const {
+  visitor->visit(this, validIndexes);
+}

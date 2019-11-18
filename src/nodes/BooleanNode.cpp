@@ -13,13 +13,13 @@ BooleanNode ::~BooleanNode() {
   delete rightChild;
 }
 
-int BooleanNode::predict(const record_t &r) const {
-  if (std::get<bool>(r[featureIndex_])) {
-    return leftChild->predict(r);
-  } else {
-    return rightChild->predict(r);
-  }
-}
+//int BooleanNode::predict(const record_t &r) const {
+//  if (std::get<bool>(r[featureIndex_])) {
+//    return leftChild->predict(r);
+//  } else {
+//    return rightChild->predict(r);
+//  }
+//}
 
 std::vector<INode *> BooleanNode::getChildren() const {
   return {leftChild, rightChild};

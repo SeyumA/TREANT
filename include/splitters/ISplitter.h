@@ -6,10 +6,9 @@
 #define TREEANT_ISPLITTER_H
 
 #include "DecisionTree.h"
+#include <features/IFeatureVector.h>
 
 typedef std::vector<unsigned long> dataset_partition_t;
-
-enum class SplitterTypes { DUMMY = 0x0 };
 
 class ISplitter {
 public:
@@ -18,7 +17,7 @@ public:
 
   // Functions
   [[nodiscard]] virtual std::pair<INode *, std::vector<dataset_partition_t>>
-  split(const dataset_t &dataset, const std::vector<unsigned long> &subset,
+  split(const std::shared_ptr<IFeatureVector> &subset,
         bool isLastLevel) const = 0;
 };
 

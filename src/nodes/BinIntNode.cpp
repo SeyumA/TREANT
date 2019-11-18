@@ -17,10 +17,10 @@ BinIntNode::~BinIntNode() {
   rightChild = nullptr;
 }
 
-int BinIntNode::predict(const record_t &r) const {
-  int record_feature = std::get<int>(r[featureIndex_]);
-  return record_feature <= v ? leftChild->predict(r) : rightChild->predict(r);
-}
+//int BinIntNode::predict(const record_t &r) const {
+//  int record_feature = std::get<int>(r[featureIndex_]);
+//  return record_feature <= v ? leftChild->predict(r) : rightChild->predict(r);
+//}
 
 std::vector<INode *> BinIntNode::getChildren() const {
   return {leftChild, rightChild};

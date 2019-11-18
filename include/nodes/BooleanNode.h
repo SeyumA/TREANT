@@ -14,7 +14,7 @@ public:
   // Destructor
   ~BooleanNode() override;
 
-  [[nodiscard]] int predict(const record_t &r) const override;
+//  [[nodiscard]] int predict(const record_t &r) const override;
 
   [[nodiscard]] std::vector<INode *> getChildren() const override;
   void setChild(std::size_t index, INode *newNodePtr) override;

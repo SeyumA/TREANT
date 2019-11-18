@@ -39,20 +39,6 @@ Dataset::Dataset(const std::string &featureFilePath,
         throw std::runtime_error("Cannot recognize type '" + type + "'");
       }
     }
-
-    // Working code (to be deleted) ----------------------------------
-    //    const auto types = utils::splitString(line);
-    //    for (const auto &type : types) {
-    //      if (type == "BOOL") {
-    //        headers_.push_back(FeatureTypes::BOOL);
-    //      } else if (type == "INT_32") {
-    //        headers_.push_back(FeatureTypes::INT32);
-    //      } else if (type == "DOUBLE") {
-    //        headers_.push_back(FeatureTypes::DOUBLE);
-    //      } else {
-    //        throw std::runtime_error("Cannot recognize type '" + type + "'");
-    //      }
-    //    }
   } else {
     throw std::runtime_error("Cannot read the first line");
   }
@@ -163,9 +149,9 @@ DataSubset::DataSubset(const Dataset &parent,
                        std::vector<std::size_t> &&validIndexes)
     : parent_(parent), validIndexes_(validIndexes) {}
 
-std::int32_t DataSubset::getMostFrequentLabel() const {
+std::pair<label_t, frequency_t> DataSubset::getMostFrequentLabel() const {
   const auto &labels = parent_.getLabels();
-  std::map<std::int32_t, std::size_t> labelToFrequency;
+  std::map<label_t, frequency_t> labelToFrequency;
   // WARNING: Always work on the subset!
   for (const auto &index : validIndexes_) {
     const auto &label = labels[index];
@@ -183,12 +169,7 @@ std::int32_t DataSubset::getMostFrequentLabel() const {
       freq = fr;
     }
   }
-  return mostFrequentLabel;
+  return std::make_pair(mostFrequentLabel, freq);
 }
 
-std::pair<INode *, std::vector<std::vector<std::size_t>>>
-DataSubset::getBestSplit() const {
-  // TODO: implement this, remember to set the right featureIndex in the node
-  std::vector<std::vector<std::size_t>> res;
-  return std::make_pair(nullptr, res);
-}
+std::size_t DataSubset::getSize() const { return validIndexes_.size(); }

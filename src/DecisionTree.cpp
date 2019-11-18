@@ -48,17 +48,12 @@ DecisionTree::buildRecursively(const DataSubset &dataSubset,
     throw std::runtime_error("callerDepth must be less than maxHeight");
   } else if (callerDepth + 1 == maxHeight) {
     // A leaf should be returned with the mostPopular label in the subset
-    // TODO: implement this
-    auto mostPopularLabel = dataSubset.getMostFrequentLabel();
-    return std::make_pair(new Leaf(mostPopularLabel), 1);
+    return std::make_pair(new Leaf(dataSubset.getMostFrequentLabel().first), 1);
+  } else if (const auto [l, f] = dataSubset.getMostFrequentLabel();
+             f == dataSubset.getSize()) {
+    return std::make_pair(new Leaf(l), 1);
   } else {
     // TODO implement the recursive call
-
-
-
-
-    return std::make_pair(nullptr, 0);
+    return buildRecursively(dataSubset, maxHeight, callerDepth + 1);
   }
 }
-
-int DecisionTree::predict(const record_t &r) const { return root_->predict(r); }

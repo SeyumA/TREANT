@@ -2,36 +2,98 @@
 #include <iterator>
 #include <regex>
 
+#include "Dataset.h"
 #include "DecisionTree.h"
 #include "Logger.h"
 #include "OptParser.h"
-#include "Dataset.h"
+#include "features/BoolFeatureVector.h"
+#include "features/DoubleFeatureVector.h"
+#include "features/IntFeatureVector.h"
+#include "splitters/DummySplitter.h"
+#include "visitors/ImpurityVisitor.h"
 
-struct Collection {
+struct IFVector;
+struct IntFVector;
+struct BoolFVector;
 
-  typedef std::variant<int, double> feature_t;
+struct IBuildingVisitor {
+  virtual ~IBuildingVisitor() = default;
 
-  feature_t &operator[](int i) { return data_[validIndexes_[i]]; }
+  virtual void visit(const IntFVector *featureVector,
+                     const indexes_t& validIndexes) = 0;
 
-  const feature_t &operator[](int i) const { return data_[validIndexes_[i]]; }
-
-  std::size_t size() { return validIndexes_.size(); }
-
-  std::vector<feature_t> data_;
-  std::vector<int> validIndexes_;
+  virtual void visit(const BoolFVector *featureVector,
+                     const indexes_t& validIndexes) = 0;
 };
+
+struct DummyBuildingVisitor : public IBuildingVisitor {
+  friend class IntFVector;
+  friend class BoolFVector;
+
+//  void visit(const IFVector *featureVector,
+//             const indexes_t& validIndexes) {
+//    std::cout << "visit overloading IFVector\n";
+//  }
+
+  void visit(const IntFVector *intFVector,
+             const indexes_t& validIndexes) {
+    std::cout << "visit overloading IntFVector\n";
+
+
+  }
+
+  void visit(const BoolFVector *boolFVector,
+             const indexes_t& validIndexes) {
+    std::cout << "visit overloading BoolFVector\n";
+  }
+};
+
+struct IFVector {
+  virtual ~IFVector() = default;
+  virtual void accept(IBuildingVisitor* visitor,
+                      const indexes_t& validIndexes) = 0;
+};
+
+struct BoolFVector : public IFVector {
+  void accept(IBuildingVisitor* visitor,
+              const indexes_t& validIndexes) {
+    visitor->visit(this, validIndexes);
+  }
+};
+
+struct IntFVector : public IFVector {
+  void accept(IBuildingVisitor* visitor,
+              const indexes_t& validIndexes) {
+    visitor->visit(this, validIndexes);
+  }
+};
+
 
 int main() {
   std::cout << "Start of the program" << std::endl;
 
-  Dataset myDataset("", "");
+  //Dataset myDataset("", "");
 
-  Collection c;
-  c.data_ = {1, 2, 3, 4, 5, 6};
-  c.validIndexes_ = {0, 2, 4};
+  {
+    IBuildingVisitor* visitor = new DummyBuildingVisitor{};
+    IFVector* boolFVector = new BoolFVector{};
+    IFVector* intFVector = new IntFVector{};
+    indexes_t indexes;
 
-  std::cout << "c[2] = " << std::get<int>(c[1]) << std::endl;
-  std::cout << "c[1] = " << std::get<int>(c[1]) << std::endl;
+    boolFVector->accept(visitor, indexes);
+
+    intFVector->accept(visitor, indexes);
+
+    delete visitor;
+    delete boolFVector;
+    delete intFVector;
+  }
+
+
+  {
+    ImpurityVisitor vis;
+  }
+
   std::cout << "End of program" << std::endl;
   return 0;
 }
