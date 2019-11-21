@@ -17,6 +17,7 @@ class IntFeatureVector;
 class DoubleFeatureVector;
 
 // TODO: this is an ImpuirityVisitor, GiniVisitor could be a child
+// TODO: see also https://www.bfilipek.com/2019/06/fsm-variant-game.html approach
 class IFeatureVectorVisitor {
 
 public:

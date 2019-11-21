@@ -19,6 +19,13 @@ public:
   void accept(IFeatureVectorVisitor *visitor,
               const indexes_t &validIndexes) const override;
 
+  bool operator[](std::size_t i) {
+    if (i < features_.size()) {
+      return features_[i];
+    }
+    throw std::out_of_range("out of range in BoolFeatureVector::operator[]");
+  }
+
 private:
   std::vector<bool> features_;
 };

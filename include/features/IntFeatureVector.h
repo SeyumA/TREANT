@@ -22,6 +22,13 @@ public:
   void accept(IFeatureVectorVisitor *visitor,
               const indexes_t &validIndexes) const override;
 
+  const std::int32_t& operator[](std::size_t i) {
+    if (i < features_.size()) {
+      return features_[i];
+    }
+    throw std::out_of_range("out of range in IntFeatureVector::operator[]");
+  }
+
 private:
   std::vector<std::int32_t> features_;
 };
