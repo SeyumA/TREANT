@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "types.h"
-#include <features/IFeatureVector.h>
 
 /**
  * The FeatureTypes enum must be consistent with feature_t
@@ -24,31 +23,20 @@ public:
   explicit Dataset(const std::string &featureFilePath,
                    const std::string &labelFilePath);
 
-  [[nodiscard]] std::size_t size() const;
-  [[nodiscard]] const std::vector<std::int32_t> &getLabels() const;
-  [[nodiscard]] const std::vector<std::shared_ptr<IFeatureVector>> &
-  getFeatureColumns() const;
+  // These functions are needed for node
+  [[nodiscard]] const std::vector<label_t> &getLabels() const;
+  [[nodiscard]] const std::vector<feature_vector_t> &getFeatureColumns() const;
+
+  [[nodiscard]] std::pair<label_t, frequency_t>
+  getMostFrequentLabel(const std::vector<index_t>& validIndexes) const;
+  
+  [[nodiscard]] bool empty() const { return labelVector_.empty(); }
+  [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
 
 private:
   std::vector<FeatureTypes> headers_;
-  std::vector<std::shared_ptr<IFeatureVector>> featureColumns_;
-  std::vector<std::int32_t> labelVector_;
-};
-
-class DataSubset final {
-public:
-  explicit DataSubset(const Dataset &parent);
-  explicit DataSubset(const Dataset &parent,
-                      std::vector<std::size_t> &&validIndexes);
-
-  // TODO: implement accessors []
-
-  [[nodiscard]] std::size_t getSize() const;
-  [[nodiscard]] std::pair<label_t, frequency_t> getMostFrequentLabel() const;
-
-private:
-  const Dataset &parent_;
-  indexes_t validIndexes_;
+  std::vector<feature_vector_t> featureColumns_;
+  std::vector<label_t> labelVector_;
 };
 
 #endif // TREEANT_DATASET_H

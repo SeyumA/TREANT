@@ -1,27 +1,27 @@
 //
-// Created by dg on 05/11/19.
+// Created by dg on 25/11/19.
 //
 
-#include "nodes/BinIntNode.h"
+#include "nodes/BinDoubleNode.h"
 #include <stdexcept>
 
-BinIntNode::BinIntNode(index_t featureIndex, int_feature_t v, INode *leftChild,
-                       INode *rightChild)
+BinDoubleNode::BinDoubleNode(index_t featureIndex, double_feature_t v,
+                             INode *leftChild, INode *rightChild)
     : featureIndex_(featureIndex), v(v), leftChild(leftChild),
       rightChild(rightChild) {}
 
-BinIntNode::~BinIntNode() {
+BinDoubleNode::~BinDoubleNode() {
   delete leftChild;
   leftChild = nullptr;
   delete rightChild;
   rightChild = nullptr;
 }
 
-std::vector<INode *> BinIntNode::getChildren() const {
+std::vector<INode *> BinDoubleNode::getChildren() const {
   return {leftChild, rightChild};
 }
 
-void BinIntNode::setChild(std::size_t index, INode *newNodePtr) {
+void BinDoubleNode::setChild(std::size_t index, INode *newNodePtr) {
   switch (index)
   {
   case 0:
@@ -36,6 +36,6 @@ void BinIntNode::setChild(std::size_t index, INode *newNodePtr) {
   }
 }
 
-void BinIntNode::setFeatureIndex(std::size_t index) {
+void BinDoubleNode::setFeatureIndex(std::size_t index) {
   featureIndex_ = index;
 }

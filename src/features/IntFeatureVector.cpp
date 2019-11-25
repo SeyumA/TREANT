@@ -9,7 +9,7 @@ IntFeatureVector::IntFeatureVector(std::vector<std::int32_t> &&features)
     : features_(std::move(features)) {}
 
 [[nodiscard]] std::tuple<std::vector<partition_t>, INode *, double>
-IntFeatureVector::split(const std::vector<std::size_t> &validIndexes) const {
+IntFeatureVector::split(const std::vector<std::size_t> &) const {
 
   std::vector<partition_t> res;
 

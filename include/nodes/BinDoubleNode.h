@@ -1,22 +1,19 @@
 //
-// Created by dg on 05/11/19.
+// Created by dg on 25/11/19.
 //
 
-#ifndef TREEANT_BININTNODE_H
-#define TREEANT_BININTNODE_H
+#ifndef TREEANT_BINDOUBLENODE_H
+#define TREEANT_BINDOUBLENODE_H
 
 #include <stdexcept>
 #include "nodes/INode.h"
 
-/**
- * Binary integer node (partition in two parts depending on an integer value)
- */
-class BinIntNode : public INode {
+class BinDoubleNode : public INode {
 public:
-  explicit BinIntNode(index_t featureIndex, int_feature_t v, INode *leftChild,
-                      INode *rightChild);
+  explicit BinDoubleNode(index_t featureIndex, double_feature_t v,
+                         INode *leftChild, INode *rightChild);
 
-  ~BinIntNode() override;
+  ~BinDoubleNode() override;
 
   [[nodiscard]] std::vector<INode *> getChildren() const override;
   void setChild(std::size_t index, INode *newNodePtr) override;
@@ -26,21 +23,21 @@ public:
   [[nodiscard]] std::vector<std::vector<index_t>>
   split(const std::vector<index_t> &validIndexes,
         const feature_vector_t &featureVector) override {
-    const auto intVectorPtr = std::get_if<int_vector_t>(&featureVector);
-    if (!intVectorPtr) {
+    const auto doubleVectorPtr = std::get_if<double_vector_t>(&featureVector);
+    if (!doubleVectorPtr) {
       throw std::runtime_error(
-          "BinIntNode::split() called on a non-int_vector_t");
+          "BinDoubleNode::split() called on a non-double_vector_t");
     }
     // Set v as the average of the vector
-    v = 0;
+    v = 0.0;
     for (const auto& i : validIndexes) {
-      v += (*intVectorPtr)[i];
+      v += (*doubleVectorPtr)[i];
     }
     v /= validIndexes.size();
     // Create the 2 partitions
     std::vector<std::vector<index_t>> p(2);
     for (const auto& i : validIndexes) {
-      if ((*intVectorPtr)[i] > v) {
+      if ((*doubleVectorPtr)[i] > v) {
         p[1].push_back(i);
       } else {
         p[0].push_back(i);
@@ -53,11 +50,11 @@ public:
   // This function is useful to use the decision tree. It should call
   // recursively predict on the next child.
   [[nodiscard]] label_t predict(const record_t &record) const override {
-    const auto intFeaturePtr = std::get_if<int_feature_t>(&record[featureIndex_]);
-    if (!intFeaturePtr) {
-      throw std::runtime_error("BinIntNode::predict() called on a non-int_feature_t");
+    const auto doubleFeaturePtr = std::get_if<double_feature_t>(&record[featureIndex_]);
+    if (!doubleFeaturePtr) {
+      throw std::runtime_error("BinDoubleNode::predict() called on a non-double_feature_t");
     }
-    else if (*intFeaturePtr > v) {
+    else if (*doubleFeaturePtr > v) {
       return rightChild->predict(record);
     } else {
       return leftChild->predict(record);
@@ -66,9 +63,11 @@ public:
 
 private:
   index_t featureIndex_;
-  int_feature_t v;
+  double_feature_t v;
   INode *leftChild = nullptr;
   INode *rightChild = nullptr;
+
+
 };
 
-#endif // TREEANT_BININTNODE_H
+#endif // TREEANT_BINDOUBLENODE_H

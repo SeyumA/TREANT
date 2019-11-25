@@ -35,31 +35,42 @@ set(SOURCES
         include/nodes/Leaf.h
         include/nodes/BinIntNode.h
         include/nodes/BooleanNode.h
+        include/nodes/BinDoubleNode.h
         include/splitters/ISplitter.h
-        include/splitters/DummySplitter.h
+
+        #include/splitters/DummySplitter.h
+
         include/DecisionTree.h
-        include/features/IFeatureVector.h
-        include/features/IntFeatureVector.h
-        include/features/BoolFeatureVector.h
-        include/features/DoubleFeatureVector.h
-        include/visitors/IFeatureVectorVisitor.h
-        include/visitors/ImpurityVisitor.h
+        include/Dataset.h
+
+        #include/features/IFeatureVector.h
+        #include/features/IntFeatureVector.h
+        #include/features/BoolFeatureVector.h
+        #include/features/DoubleFeatureVector.h
+
+        #include/visitors/IFeatureVectorVisitor.h
+        #include/visitors/ImpurityVisitor.h
+
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
-        src/nodes/INode.cpp
+        # src/nodes/INode.cpp
         src/nodes/Leaf.cpp
         src/nodes/BinIntNode.cpp
+        src/nodes/BinDoubleNode.cpp
         src/nodes/BooleanNode.cpp
-        src/splitters/DummySplitter.cpp
+        #src/splitters/DummySplitter.cpp
         src/DecisionTree.cpp
-        src/Dataset.cpp include/Dataset.h
-        src/features/IFeatureVector.cpp
-        src/features/IntFeatureVector.cpp
-        src/features/BoolFeatureVector.cpp
-        src/features/DoubleFeatureVector.cpp
-        src/visitors/ImpurityVisitor.cpp)
+        src/Dataset.cpp
+
+        #src/features/IFeatureVector.cpp
+        #src/features/IntFeatureVector.cpp
+        #src/features/BoolFeatureVector.cpp
+        #src/features/DoubleFeatureVector.cpp
+
+        #src/visitors/ImpurityVisitor.cpp
+        )
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})
