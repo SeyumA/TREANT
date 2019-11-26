@@ -5,6 +5,15 @@
 #include <regex>
 #include "utils.h"
 #include "Logger.h"
+#include "Dataset.h"
+
+#include "nodes/INode.h"
+#include "nodes/Leaf.h"
+#include "nodes/BooleanNode.h"
+#include "nodes/BinIntNode.h"
+#include "nodes/BinDoubleNode.h"
+
+#include "visitors/GiniVisitor.h"
 
 namespace utils {
 
@@ -61,6 +70,49 @@ std::vector<std::string> splitString(const std::string& s, char delimiter) {
     tokens.push_back(token);
   }
   return tokens;
+}
+
+std::pair<INode *, std::size_t> buildRecursively(
+    const Dataset &dataset, const std::vector<index_t> &validIndexes,
+    const std::size_t &maxHeight, const std::size_t &callerDepth) {
+  //
+  // Find the best split and continue building the tree
+  if (callerDepth >= maxHeight) {
+    throw std::runtime_error("callerDepth must be less than maxHeight");
+  } else if (callerDepth + 1 == maxHeight) {
+    // A leaf should be returned with the mostPopular label in the subset
+    return std::make_pair(
+        new Leaf(dataset.getMostFrequentLabel(validIndexes).first), 1);
+  } else if (const auto [l, f] = dataset.getMostFrequentLabel(validIndexes);
+      f == dataset.size()) {
+    return std::make_pair(new Leaf(l), 1);
+  } else {
+    // Assuming that there are different labels in the current training subset
+    const auto &featureColumns = dataset.getFeatureColumns();
+
+    IFeatureVectorVisitor *visitor =
+        new GiniVisitor(validIndexes, dataset.getLabels());
+    for (std::size_t i = 0; i < featureColumns.size(); i++) {
+      visitor->prepareToVisit(i);
+      std::visit(*visitor, featureColumns[i]);
+    }
+    const auto [bestSplitter, bestPartitions] =
+    visitor->getBestSplitterWithPartitions();
+    // Clean up the children (safety-first)
+    for (auto& child : bestSplitter->children_) {
+      delete child;
+    }
+    std::size_t currHeight = 0;
+    for (std::size_t i = 0; i < bestSplitter->children_.size(); ++i) {
+      auto [child, h] =
+      buildRecursively(dataset, bestPartitions[i], maxHeight, callerDepth + 1);
+      bestSplitter->children_[i] = child;
+      currHeight = currHeight < h ? h : currHeight;
+    }
+    //
+    delete visitor;
+    return std::make_pair(bestSplitter, currHeight);
+  }
 }
 
 }

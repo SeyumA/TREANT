@@ -48,14 +48,14 @@ set(SOURCES
         #include/features/BoolFeatureVector.h
         #include/features/DoubleFeatureVector.h
 
-        #include/visitors/IFeatureVectorVisitor.h
-        #include/visitors/ImpurityVisitor.h
+        include/visitors/IFeatureVectorVisitor.h
+        include/visitors/GiniVisitor.h
 
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
-        # src/nodes/INode.cpp
+        src/nodes/INode.cpp
         src/nodes/Leaf.cpp
         src/nodes/BinIntNode.cpp
         src/nodes/BinDoubleNode.cpp
@@ -69,7 +69,7 @@ set(SOURCES
         #src/features/BoolFeatureVector.cpp
         #src/features/DoubleFeatureVector.cpp
 
-        #src/visitors/ImpurityVisitor.cpp
+        src/visitors/GiniVisitor.cpp
         )
 
 # Build an object library

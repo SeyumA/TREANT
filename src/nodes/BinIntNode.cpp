@@ -2,40 +2,40 @@
 // Created by dg on 05/11/19.
 //
 
-#include "nodes/BinIntNode.h"
 #include <stdexcept>
+#include "nodes/BinIntNode.h"
 
-BinIntNode::BinIntNode(index_t featureIndex, int_feature_t v, INode *leftChild,
-                       INode *rightChild)
-    : featureIndex_(featureIndex), v(v), leftChild(leftChild),
-      rightChild(rightChild) {}
+BinIntNode::BinIntNode(index_t featureIndex, int_feature_t v)
+    : INode(featureIndex, {nullptr, nullptr}), v_(v) {}
 
-BinIntNode::~BinIntNode() {
-  delete leftChild;
-  leftChild = nullptr;
-  delete rightChild;
-  rightChild = nullptr;
-}
-
-std::vector<INode *> BinIntNode::getChildren() const {
-  return {leftChild, rightChild};
-}
-
-void BinIntNode::setChild(std::size_t index, INode *newNodePtr) {
-  switch (index)
-  {
-  case 0:
-    leftChild = newNodePtr;
-    break;
-  case 1:
-    rightChild = newNodePtr;
-    break;
-  default:
+partitions_t BinIntNode::split(const partition_t &validIndexes,
+                               const feature_vector_t &featureVector) const {
+  const auto intVectorPtr = std::get_if<int_vector_t>(&featureVector);
+  if (!intVectorPtr) {
     throw std::runtime_error(
-        "Invalid usage of setChild in BinDoubleNode, index is invalid");
+        "BinIntNode::split() called on a non-int_vector_t");
   }
+  // Create the 2 partitions
+  partitions_t p(2);
+  for (const auto &i : validIndexes) {
+    if ((*intVectorPtr)[i] > v_) {
+      p[1].push_back(i);
+    } else {
+      p[0].push_back(i);
+    }
+  }
+  //
+  return p;
 }
 
-void BinIntNode::setFeatureIndex(std::size_t index) {
-  featureIndex_ = index;
+label_t BinIntNode::predict(const record_t &record) const {
+  const auto intFeaturePtr = std::get_if<int_feature_t>(&record[featureIndex_]);
+  if (!intFeaturePtr) {
+    throw std::runtime_error(
+        "BinIntNode::predict() called on a non-int_feature_t");
+  } else if (*intFeaturePtr > v_) {
+    return children_[1]->predict(record);
+  } else {
+    return children_[0]->predict(record);
+  }
 }

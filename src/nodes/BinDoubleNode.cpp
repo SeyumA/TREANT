@@ -2,40 +2,42 @@
 // Created by dg on 25/11/19.
 //
 
-#include "nodes/BinDoubleNode.h"
 #include <stdexcept>
+#include "nodes/BinDoubleNode.h"
 
-BinDoubleNode::BinDoubleNode(index_t featureIndex, double_feature_t v,
-                             INode *leftChild, INode *rightChild)
-    : featureIndex_(featureIndex), v(v), leftChild(leftChild),
-      rightChild(rightChild) {}
+BinDoubleNode::BinDoubleNode(index_t featureIndex, double_feature_t v)
+    : INode(featureIndex, {nullptr, nullptr}), v_(v) {}
 
-BinDoubleNode::~BinDoubleNode() {
-  delete leftChild;
-  leftChild = nullptr;
-  delete rightChild;
-  rightChild = nullptr;
-}
-
-std::vector<INode *> BinDoubleNode::getChildren() const {
-  return {leftChild, rightChild};
-}
-
-void BinDoubleNode::setChild(std::size_t index, INode *newNodePtr) {
-  switch (index)
-  {
-  case 0:
-    leftChild = newNodePtr;
-    break;
-  case 1:
-    rightChild = newNodePtr;
-    break;
-  default:
+label_t BinDoubleNode::predict(const record_t &record) const {
+  const auto doubleFeaturePtr =
+      std::get_if<double_feature_t>(&record[featureIndex_]);
+  if (!doubleFeaturePtr) {
     throw std::runtime_error(
-        "Invalid usage of setChild in BinDoubleNode, index is invalid");
+        "BinDoubleNode::predict() called on a non-double_feature_t");
+  } else if (*doubleFeaturePtr > v_) {
+    return children_[1]->predict(record);
+  } else {
+    return children_[0]->predict(record);
   }
 }
 
-void BinDoubleNode::setFeatureIndex(std::size_t index) {
-  featureIndex_ = index;
+[[nodiscard]] partitions_t
+BinDoubleNode::split(const partition_t &validIndexes,
+                     const feature_vector_t &featureVector) const {
+  const auto doubleVectorPtr = std::get_if<double_vector_t>(&featureVector);
+  if (!doubleVectorPtr) {
+    throw std::runtime_error(
+        "BinDoubleNode::split() called on a non-double_vector_t");
+  }
+  // Create the 2 partitions
+  std::vector<std::vector<index_t>> p(2);
+  for (const auto &i : validIndexes) {
+    if ((*doubleVectorPtr)[i] > v_) {
+      p[1].push_back(i);
+    } else {
+      p[0].push_back(i);
+    }
+  }
+  //
+  return p;
 }
