@@ -10,11 +10,7 @@ int main() {
   // TODO: pass the right paths to the files
   Dataset dataset("", "");
 
-  DecisionTree dt(dataset, 1);
-
-//  record_t r = {23, "pippo", "pluto"};
-//  auto labelPrediction = dt.predict(r);
-//  assert(labelPrediction == 1);
+  DecisionTree dt(dataset, 1, DecisionTree::VisitorConstructorTypes::GINI);
 
   return 0;
 }

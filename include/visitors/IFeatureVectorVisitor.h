@@ -12,10 +12,6 @@
 class INode;
 class IFeatureVector;
 
-class BoolFeatureVector;
-class IntFeatureVector;
-class DoubleFeatureVector;
-
 // See also https://www.bfilipek.com/2019/06/fsm-variant-game.html
 class IFeatureVectorVisitor {
 
@@ -33,7 +29,9 @@ public:
 
   virtual void operator()(const double_vector_t &) = 0;
 
-  virtual void prepareToVisit(index_t) = 0;
+  virtual void visitFeatureVectors(const std::vector<feature_vector_t>& featureVectors) = 0;
+
+  [[nodiscard]] virtual IFeatureVectorVisitor* clone() const = 0;
 
   [[nodiscard]] virtual std::pair<INode *, partitions_t>
   getBestSplitterWithPartitions() const = 0;

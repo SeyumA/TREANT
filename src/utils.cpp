@@ -2,22 +2,22 @@
 // Created by dg on 31/10/19.
 //
 
-#include <regex>
 #include "utils.h"
-#include "Logger.h"
 #include "Dataset.h"
+#include "Logger.h"
+#include <regex>
 
+#include "nodes/BinDoubleNode.h"
+#include "nodes/BinIntNode.h"
+#include "nodes/BooleanNode.h"
 #include "nodes/INode.h"
 #include "nodes/Leaf.h"
-#include "nodes/BooleanNode.h"
-#include "nodes/BinIntNode.h"
-#include "nodes/BinDoubleNode.h"
 
 #include "visitors/GiniVisitor.h"
 
 namespace utils {
 
-std::map<std::string, std::string> get_options_map(const std::string& args_c) {
+std::map<std::string, std::string> get_options_map(const std::string &args_c) {
 
   static const std::string endings = "\t\n\v\f\r ";
   // finds one or more spaces
@@ -53,7 +53,7 @@ std::map<std::string, std::string> get_options_map(const std::string& args_c) {
         // TODO: some checks about the next token (does it start with '-'?, ...)
         res.insert(std::pair<std::string, std::string>(curr_option, *it));
       } else {
-        --it;  // back of one position to match tokens.end()
+        --it; // back of one position to match tokens.end()
       }
     }
     ++it;
@@ -62,7 +62,7 @@ std::map<std::string, std::string> get_options_map(const std::string& args_c) {
   return res;
 }
 
-std::vector<std::string> splitString(const std::string& s, char delimiter) {
+std::vector<std::string> splitString(const std::string &s, char delimiter) {
   std::vector<std::string> tokens;
   std::string token;
   std::istringstream iss(s);
@@ -72,9 +72,11 @@ std::vector<std::string> splitString(const std::string& s, char delimiter) {
   return tokens;
 }
 
-std::pair<INode *, std::size_t> buildRecursively(
-    const Dataset &dataset, const std::vector<index_t> &validIndexes,
-    const std::size_t &maxHeight, const std::size_t &callerDepth) {
+std::pair<INode *, std::size_t>
+buildRecursively(const Dataset &dataset,
+                 const std::vector<index_t> &validIndexes,
+                 const std::size_t &maxHeight, const std::size_t &callerDepth,
+                 IFeatureVectorVisitor *visitor) {
   //
   // Find the best split and continue building the tree
   if (callerDepth >= maxHeight) {
@@ -84,33 +86,35 @@ std::pair<INode *, std::size_t> buildRecursively(
     return std::make_pair(
         new Leaf(dataset.getMostFrequentLabel(validIndexes).first), 1);
   } else if (const auto [l, f] = dataset.getMostFrequentLabel(validIndexes);
-      f == dataset.size()) {
+             f == dataset.size()) {
     return std::make_pair(new Leaf(l), 1);
   } else {
     // Assuming that there are different labels in the current training subset
     const auto &featureColumns = dataset.getFeatureColumns();
-
-    IFeatureVectorVisitor *visitor =
-        new GiniVisitor(validIndexes, dataset.getLabels());
-    for (std::size_t i = 0; i < featureColumns.size(); i++) {
-      visitor->prepareToVisit(i);
-      std::visit(*visitor, featureColumns[i]);
-    }
+    //
+    // TODO: could be a parameter of the function buildRecursively
+    //    GiniVisitor visitor(validIndexes, dataset.getLabels());
+    //
+    visitor->visitFeatureVectors(featureColumns);
     const auto [bestSplitter, bestPartitions] =
-    visitor->getBestSplitterWithPartitions();
-    // Clean up the children (safety-first)
-    for (auto& child : bestSplitter->children_) {
+        visitor->getBestSplitterWithPartitions();
+    //
+    // This function can access the INode::children_ because is a friend of
+    // INode Clean up the children (safety-first)
+    for (auto &child : bestSplitter->children_) {
       delete child;
     }
     std::size_t currHeight = 0;
     for (std::size_t i = 0; i < bestSplitter->children_.size(); ++i) {
-      auto [child, h] =
-      buildRecursively(dataset, bestPartitions[i], maxHeight, callerDepth + 1);
+      // Build recursively the children
+      IFeatureVectorVisitor *childrenVisitor = visitor->clone();
+      auto [child, h] = buildRecursively(dataset, bestPartitions[i], maxHeight,
+                                         callerDepth + 1, childrenVisitor);
       bestSplitter->children_[i] = child;
       currHeight = currHeight < h ? h : currHeight;
+      delete childrenVisitor;
     }
     //
-    delete visitor;
     return std::make_pair(bestSplitter, currHeight);
   }
 }

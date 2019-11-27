@@ -6,19 +6,11 @@
 #include <map>
 
 GiniVisitor::GiniVisitor(const std::vector<index_t> &validIndexes,
-                                 const std::vector<label_t> &labels)
-    : featureIndex_(0), validIndexes_(validIndexes), labels_(labels) {}
-
-void GiniVisitor::prepareToVisit(index_t currentFeatureIndex) {
-  featureIndex_ = currentFeatureIndex;
-  isPreparedToVisit_ = true;
-}
+                         const std::vector<label_t> &labels)
+    : featureIndex_(0), validIndexes_(validIndexes), labels_(labels),
+      bestSplitter_(nullptr), impurity_(0.0) {}
 
 void GiniVisitor::operator()(const bool_vector_t &boolVector) {
-  if (!isPreparedToVisit_) {
-    throw std::runtime_error(
-        "The GiniVisitor is not prepared to visit a bool_vector_t");
-  }
   // This visitor uses a BooleanNode to split a bool_vector_t
   if (!bestSplitter_) {
     bestSplitter_ = new BooleanNode(featureIndex_);
@@ -38,14 +30,9 @@ void GiniVisitor::operator()(const bool_vector_t &boolVector) {
       delete candidate;
     }
   }
-  isPreparedToVisit_ = false;
 }
 
 void GiniVisitor::operator()(const int_vector_t &intVector) {
-  if (!isPreparedToVisit_) {
-    throw std::runtime_error(
-        "The GiniVisitor is not prepared to visit an int_vector_t");
-  }
   // This visitor uses a BinIntNode to split an int_vector_t
   // The splitting value is calculated as the average of the features
   int_feature_t v = 0;
@@ -72,14 +59,9 @@ void GiniVisitor::operator()(const int_vector_t &intVector) {
       delete candidate;
     }
   }
-  isPreparedToVisit_ = false;
 }
 
 void GiniVisitor::operator()(const double_vector_t &doubleVector) {
-  if (!isPreparedToVisit_) {
-    throw std::runtime_error(
-        "The GiniVisitor is not prepared to visit an int_vector_t");
-  }
   // This visitor uses a BinDoubleNode to split a double_vector_t
   // The splitting value is calculated as the average of the features
   double_feature_t v = 0;
@@ -106,12 +88,24 @@ void GiniVisitor::operator()(const double_vector_t &doubleVector) {
       delete candidate;
     }
   }
-  isPreparedToVisit_ = false;
 }
 
-[[nodiscard]] std::pair<INode *, partitions_t >
+std::pair<INode *, partitions_t>
 GiniVisitor::getBestSplitterWithPartitions() const {
   return std::make_pair(bestSplitter_, bestPartitions_);
+}
+
+IFeatureVectorVisitor* GiniVisitor::clone() const {
+  return new GiniVisitor(this->validIndexes_, this->labels_);
+}
+
+void GiniVisitor::visitFeatureVectors(
+    const std::vector<feature_vector_t> &featureVectors) {
+  for (index_t i = 0; i < featureVectors.size(); i++) {
+    // N.B. : The update of featureIndex_ is crucial
+    this->featureIndex_ = i;
+    std::visit(*this, featureVectors[i]);
+  }
 }
 
 double GiniVisitor::calculateImpurity(

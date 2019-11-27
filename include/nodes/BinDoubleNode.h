@@ -24,11 +24,6 @@ public:
   // recursively predict on the next child.
   [[nodiscard]] label_t predict(const record_t &record) const override;
 
-  // utils::buildRecursively must have access to the children
-  friend std::pair<INode *, std::size_t> utils::buildRecursively(
-      const Dataset &dataset, const std::vector<index_t> &validIndexes,
-      const std::size_t &maxHeight, const std::size_t &callerDepth);
-
 private:
   double_feature_t v_;
 };

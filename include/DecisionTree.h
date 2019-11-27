@@ -16,37 +16,26 @@ class ISplitter;
 class DecisionTree final {
 
 public:
+
+  enum class VisitorConstructorTypes {
+    GINI = 0x0
+  };
+
   // Constructors
   DecisionTree() = delete;
   DecisionTree(DecisionTree&) = delete;
   DecisionTree(DecisionTree&&) = delete;
 
-  explicit DecisionTree(const Dataset &dataset, const std::size_t &maxDepth);
+  explicit DecisionTree(const Dataset &dataset, const std::size_t &maxDepth, VisitorConstructorTypes visitorType);
 
   // Destructor
   ~DecisionTree();
 
   // Functions
-  
-  
-  /**
-   * Recursively builds a decision tree
-   * @param dataset the original dataset
-   * @param subset is a vector of indexes that picks a subset of the dataset
-   * @param splitter the ISplitter used to find the best split for this tree
-   * @param maxDepth the maximum depth of the resulting tree
-   * @param callerDepth the depth of the caller node
-   * @return a pair containing the tree root and the height of the tree rooted by
-   * the first output
-   */
-  static std::pair<INode *, std::size_t>
-  buildRecursively(const Dataset &dataset,
-                   const std::vector<index_t>& validIndexes,
-                   const std::size_t &maxHeight,
-                   const std::size_t &currDepth);
+  [[nodiscard]] label_t predict(const record_t &) const;
 
 private:
-  unsigned int height_;
+  unsigned int height_ = 0;
   INode *root_ = nullptr;
 };
 

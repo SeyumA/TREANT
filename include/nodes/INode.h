@@ -6,8 +6,8 @@
 #define TREEANT_INODE_H
 
 #include "types.h"
-#include <vector>
 #include "utils.h"
+#include <vector>
 
 class INode {
 public:
@@ -28,7 +28,8 @@ public:
   // Visitors that are friend of this class
   friend std::pair<INode *, std::size_t> utils::buildRecursively(
       const Dataset &dataset, const std::vector<index_t> &validIndexes,
-      const std::size_t &maxHeight, const std::size_t &callerDepth);
+      const std::size_t &maxHeight, const std::size_t &callerDepth,
+      IFeatureVectorVisitor *visitor);
 
 protected:
   index_t featureIndex_;

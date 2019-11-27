@@ -4,11 +4,8 @@
 
 #include "Dataset.h"
 
-#include <features/BoolFeatureVector.h>
-#include <features/DoubleFeatureVector.h>
-#include <features/IntFeatureVector.h>
 #include <fstream>
-#include <numeric>
+#include <regex>
 #include <sstream>
 #include <utility>
 
@@ -21,88 +18,99 @@ Dataset::Dataset(const std::string &featureFilePath,
   if (!ifs.is_open() || !ifs.good()) {
     throw std::runtime_error("The record file stream is not open or not good");
   }
-  //
-  // Read the header with the types. For each type we should be able to store
-  // the proper column type (BoolColumn, Int32Column, ...)
+  // Refactoring ---------------------------------------------------------------
+  const std::regex e("([ ]+)");
+  auto cleanLine = [&e](const std::string &s) {
+    std::string lineClean = std::regex_replace(s, e, " ");
+    lineClean = lineClean.substr(lineClean.find_first_not_of(' '));
+    lineClean = lineClean.substr(lineClean.find_last_not_of(' ') + 1);
+    return lineClean;
+  };
+  // Reading the first line
+  std::optional<std::size_t> labelPos = std::nullopt;
   std::string line;
   if (std::getline(ifs, line)) {
+    line = cleanLine(line);
     std::istringstream is(line);
     std::string type;
+    std::size_t i = 0;
     while (std::getline(is, type, ' ')) {
       if (type == "BOOL") {
-        headers_.push_back(FeatureTypes::BOOL);
+        featureColumns_.emplace_back(bool_vector_t());
       } else if (type == "INT") {
-        headers_.push_back(FeatureTypes::INT);
+        featureColumns_.emplace_back(int_vector_t());
       } else if (type == "DOUBLE") {
-        headers_.push_back(FeatureTypes::DOUBLE);
+        featureColumns_.emplace_back(double_vector_t());
+      } else if (type == "LABEL") {
+        labelPos = i;
       } else {
-        throw std::runtime_error("Cannot recognize type '" + type + "'");
+        std::string err = "Cannot recognize type '";
+        err.append(type);
+        err.append("' in the first line of file ");
+        err.append(featureFilePath);
+        throw std::runtime_error(err);
       }
+      i++;
     }
   } else {
     throw std::runtime_error("Cannot read the first line");
   }
   //
-  // Build the records
-  // Matrix of strings useful as support matrix in order to build columns
-  std::vector<std::vector<std::string>> columnsAsStrings(headers_.size());
+  if (!labelPos.has_value()) {
+    throw std::runtime_error("Cannot find 'LABEL' in the first line (there "
+                             "must be a column of labels");
+  }
   //
+  std::size_t numberOfRecords = 0;
   while (std::getline(ifs, line)) {
+    line = cleanLine(line);
     std::istringstream is(line);
     std::string token;
-    for (std::size_t j = 0; j < headers_.size(); j++) {
-      if (!std::getline(is, token, ' ')) {
-        throw std::runtime_error("Cannot find the current token");
+    std::size_t j = 0;
+    while (std::getline(is, token, ' ')) {
+      if (j == labelPos) {
+        labelVector_.emplace_back(std::stoi(token));
+      } else {
+        std::visit(
+            [&token](auto &&arg) {
+              using T = std::decay_t<decltype(arg)>;
+              if (std::is_same_v<T, bool_vector_t>) {
+                if (token == "0" || token == "false") {
+                  arg.emplace_back(false);
+                } else if (token == "1" || token == "true") {
+                  arg.emplace_back(true);
+                } else {
+                  throw std::runtime_error(
+                      "Bool variables must be '0' or '1' or 'false' or 'true'");
+                }
+              } else if constexpr (std::is_same_v<T, int_vector_t>) {
+                arg.emplace_back(std::stoi(token));
+              } else if constexpr (std::is_same_v<T, double_vector_t>) {
+                arg.emplace_back(std::stod(token));
+              } else {
+                throw std::runtime_error(
+                    "Invalid feature column (not handled in the visitor");
+              }
+            },
+            featureColumns_[j]);
       }
-      columnsAsStrings[j].push_back(token);
+      j++;
     }
+    numberOfRecords++;
   }
-  //
-  if (columnsAsStrings[0].empty()) {
-    throw std::runtime_error("No record find");
-  }
-  const std::size_t numberOfRecords = columnsAsStrings[0].size();
-  // Translate the matrix of strings to the proper type
-  for (std::size_t j = 0; j < headers_.size(); j++) {
-    const auto type = headers_[j];
-    switch (type) {
-    case FeatureTypes::BOOL: {
-      std::vector<bool_feature_t> column(numberOfRecords);
-      for (std::size_t i = 0; i < columnsAsStrings[j].size(); i++) {
-        if (columnsAsStrings[j][i] == "0" ||
-            columnsAsStrings[j][i] == "false") {
-          column[i] = false;
-        } else if (columnsAsStrings[j][i] == "1" ||
-                   columnsAsStrings[j][i] == "true") {
-          column[i] = true;
-        } else {
-          throw std::invalid_argument(
-              "Boolean feature can be only '1', '0', 'true', 'false'");
-        }
-      }
-      featureColumns_.emplace_back(column);
-      break;
-    }
-    case FeatureTypes::INT: {
-      std::vector<int_feature_t> column(numberOfRecords);
-      for (std::size_t i = 0; i < columnsAsStrings[j].size(); i++) {
-        column[i] = std::stoi(columnsAsStrings[j][i]);
-      }
-      featureColumns_.emplace_back(column);
-      break;
-    }
-    case FeatureTypes::DOUBLE: {
-      std::vector<double_feature_t> column(numberOfRecords);
-      for (std::size_t i = 0; i < columnsAsStrings[j].size(); i++) {
-        column[i] = std::stod(columnsAsStrings[j][i]);
-      }
-      featureColumns_.emplace_back(column);
-      break;
-    }
-    default:
-      throw std::runtime_error("Not managed FeatureType");
-    }
-  }
+
+  /*
+   else if constexpr (std::is_same_v<T, int_vector_t>) {
+                arg.emplace_back(std::stoi(token));
+              } else if constexpr (std::is_same_v<T, double_vector_t>) {
+                arg.emplace_back(std::stod(token));
+              } else {
+                throw std::runtime_error(
+                    "Invalid feature column (not handled in the visitor");
+              }
+   */
+
+
   // Close the file stream
   ifs.close();
   //
@@ -125,7 +133,7 @@ Dataset::Dataset(const std::string &featureFilePath,
 }
 
 std::pair<label_t, frequency_t>
-Dataset::getMostFrequentLabel(const std::vector<index_t>& validIndexes) const {
+Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const {
   std::map<label_t, frequency_t> labelToFrequency;
   // WARNING: Always work on the subset!
   for (const auto &index : validIndexes) {
@@ -151,7 +159,6 @@ const std::vector<std::int32_t> &Dataset::getLabels() const {
   return labelVector_;
 }
 
-const std::vector<feature_vector_t> &
-Dataset::getFeatureColumns() const {
+const std::vector<feature_vector_t> &Dataset::getFeatureColumns() const {
   return featureColumns_;
 }

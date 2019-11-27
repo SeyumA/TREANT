@@ -21,26 +21,26 @@ public:
 
   void operator()(const double_vector_t &doubleVector) override;
 
+  void visitFeatureVectors(
+      const std::vector<feature_vector_t> &featureVectors) override;
+
+  [[nodiscard]] IFeatureVectorVisitor* clone() const override;
+
   [[nodiscard]] std::pair<INode *, partitions_t>
   getBestSplitterWithPartitions() const override;
 
-  void prepareToVisit(index_t currentFeatureIndex) override;
+protected:
+  // Leaved virtual in order to be able to change it in a subclass.
+  virtual double calculateImpurity(const std::vector<std::vector<index_t>> &partitions);
 
 private:
   index_t featureIndex_;
   const std::vector<index_t> &validIndexes_;
   const std::vector<label_t> &labels_;
 
-  INode *bestSplitter_ = nullptr;
-  double impurity_ = 0.0;
+  INode *bestSplitter_;
+  double impurity_;
   std::vector<std::vector<index_t>> bestPartitions_;
-
-  // Flag used to enforce the use of prepareToVisit function before visit.
-  bool isPreparedToVisit_ = false;
-
-  // Functions
-private:
-  double calculateImpurity(const std::vector<std::vector<index_t>> &partitions);
 };
 
 #endif // TREEANT_GINIVISITOR_H
