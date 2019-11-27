@@ -1,0 +1,2 @@
+  BOOL   INT    DOUBLE  
+0        22     3.467
