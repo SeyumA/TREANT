@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <ostream>
 
 #include "types.h"
 
@@ -19,8 +20,7 @@
 class Dataset final {
 
 public:
-  explicit Dataset(const std::string &featureFilePath,
-                   const std::string &labelFilePath);
+  explicit Dataset(const std::string &featureFilePath);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
@@ -32,6 +32,8 @@ public:
   [[nodiscard]] bool empty() const { return labelVector_.empty(); }
   [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
 
+  friend std::ostream& operator<<(std::ostream& os, const Dataset& dt);
+
 private:
   // Support enum class
   enum class FeatureTypes { BOOL = 0x0, INT, DOUBLE };
@@ -39,5 +41,7 @@ private:
   std::vector<feature_vector_t> featureColumns_;
   std::vector<label_t> labelVector_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Dataset& dt);
 
 #endif // TREEANT_DATASET_H

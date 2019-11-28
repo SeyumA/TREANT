@@ -8,7 +8,7 @@
 
 int main() {
   // TODO: pass the right paths to the files
-  Dataset dataset("", "");
+  Dataset dataset("../tests/small_db.txt");
 
   DecisionTree dt(dataset, 1, DecisionTree::VisitorConstructorTypes::GINI);
 

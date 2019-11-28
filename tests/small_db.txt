@@ -1,2 +1,2 @@
-  BOOL   INT    DOUBLE  
-0        22     3.467
+LABEL BOOL DOUBLE INT
+1              1     3.467 22

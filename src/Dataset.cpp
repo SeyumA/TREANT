@@ -5,52 +5,47 @@
 #include "Dataset.h"
 
 #include <fstream>
-#include <regex>
 #include <sstream>
 #include <utility>
 
 #include "utils.h"
 
-Dataset::Dataset(const std::string &featureFilePath,
-                 const std::string &labelFilePath) {
+Dataset::Dataset(const std::string &featureFilePath) {
   std::ifstream ifs;
   ifs.open(featureFilePath);
   if (!ifs.is_open() || !ifs.good()) {
     throw std::runtime_error("The record file stream is not open or not good");
   }
-  // Refactoring ---------------------------------------------------------------
-  const std::regex e("([ ]+)");
-  auto cleanLine = [&e](const std::string &s) {
-    std::string lineClean = std::regex_replace(s, e, " ");
-    lineClean = lineClean.substr(lineClean.find_first_not_of(' '));
-    lineClean = lineClean.substr(lineClean.find_last_not_of(' ') + 1);
-    return lineClean;
-  };
-  // Reading the first line
+  // Reading the first line and populate the empty dataset but with the right
+  // types
   std::optional<std::size_t> labelPos = std::nullopt;
   std::string line;
   if (std::getline(ifs, line)) {
-    line = cleanLine(line);
     std::istringstream is(line);
     std::string type;
     std::size_t i = 0;
     while (std::getline(is, type, ' ')) {
-      if (type == "BOOL") {
-        featureColumns_.emplace_back(bool_vector_t());
-      } else if (type == "INT") {
-        featureColumns_.emplace_back(int_vector_t());
-      } else if (type == "DOUBLE") {
-        featureColumns_.emplace_back(double_vector_t());
-      } else if (type == "LABEL") {
-        labelPos = i;
-      } else {
-        std::string err = "Cannot recognize type '";
-        err.append(type);
-        err.append("' in the first line of file ");
-        err.append(featureFilePath);
-        throw std::runtime_error(err);
+      if (!type.empty()) {
+        if (type == "BOOL") {
+          featureColumns_.emplace_back(bool_vector_t());
+        } else if (type == "INT") {
+          featureColumns_.emplace_back(int_vector_t());
+        } else if (type == "DOUBLE") {
+          featureColumns_.emplace_back(double_vector_t());
+        } else if (type == "LABEL") {
+          if (labelPos.has_value()) {
+            throw std::runtime_error("Only one column can contain labels");
+          } else {
+            labelPos = i;
+          }
+        } else {
+          std::stringstream ss;
+          ss << "Cannot recognize type '" << type
+             << "' in the first line of file " << featureFilePath;
+          throw std::runtime_error(ss.str());
+        }
+        i++;
       }
-      i++;
     }
   } else {
     throw std::runtime_error("Cannot read the first line");
@@ -60,76 +55,64 @@ Dataset::Dataset(const std::string &featureFilePath,
     throw std::runtime_error("Cannot find 'LABEL' in the first line (there "
                              "must be a column of labels");
   }
-  //
+  if (featureColumns_.empty()) {
+    throw std::runtime_error("There are no features in this dataset");
+  }
+  // Populate the dataset
   std::size_t numberOfRecords = 0;
   while (std::getline(ifs, line)) {
-    line = cleanLine(line);
     std::istringstream is(line);
     std::string token;
-    std::size_t j = 0;
+    std::size_t j = 0;  // index on the columns of the file
+    std::size_t jj = 0; // index on the columns of the dataset.vector
     while (std::getline(is, token, ' ')) {
-      if (j == labelPos) {
-        labelVector_.emplace_back(std::stoi(token));
-      } else {
-        std::visit(
-            [&token](auto &&arg) {
-              using T = std::decay_t<decltype(arg)>;
-              if (std::is_same_v<T, bool_vector_t>) {
-                if (token == "0" || token == "false") {
-                  arg.emplace_back(false);
-                } else if (token == "1" || token == "true") {
-                  arg.emplace_back(true);
+      if (!token.empty()) {
+        if (j == labelPos) {
+          labelVector_.emplace_back(std::stoi(token));
+        } else {
+          std::visit(
+              [&token](auto &&arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if (std::is_same_v<T, bool_vector_t>) {
+                  if (token == "0" || token == "false") {
+                    arg.emplace_back(false);
+                  } else if (token == "1" || token == "true") {
+                    arg.emplace_back(true);
+                  } else {
+                    throw std::runtime_error("Bool variables must be '0' or "
+                                             "'1' or 'false' or 'true'");
+                  }
+                } else if (std::is_same_v<T, int_vector_t>) {
+                  arg.emplace_back(std::stoi(token));
+                } else if (std::is_same_v<T, double_vector_t>) {
+                  arg.emplace_back(std::stod(token));
                 } else {
                   throw std::runtime_error(
-                      "Bool variables must be '0' or '1' or 'false' or 'true'");
+                      "Invalid feature column (not handled in the visitor");
                 }
-              } else if constexpr (std::is_same_v<T, int_vector_t>) {
-                arg.emplace_back(std::stoi(token));
-              } else if constexpr (std::is_same_v<T, double_vector_t>) {
-                arg.emplace_back(std::stod(token));
-              } else {
-                throw std::runtime_error(
-                    "Invalid feature column (not handled in the visitor");
-              }
-            },
-            featureColumns_[j]);
+              },
+              featureColumns_[jj]);
+          jj++;
+        }
+        j++; // always update this index if a token is not empty
       }
-      j++;
     }
-    numberOfRecords++;
+    if (!line.empty()) {
+      numberOfRecords++;
+    } else if (!(jj == featureColumns_.size() && j == (jj + 1))) {
+      std::stringstream ss;
+      ss << "ERROR reading record #" << numberOfRecords << " at line '" << line
+         << "' where are supposed be present " << featureColumns_.size()
+         << " features and one label";
+      std::runtime_error(ss.str());
+    }
   }
-
-  /*
-   else if constexpr (std::is_same_v<T, int_vector_t>) {
-                arg.emplace_back(std::stoi(token));
-              } else if constexpr (std::is_same_v<T, double_vector_t>) {
-                arg.emplace_back(std::stod(token));
-              } else {
-                throw std::runtime_error(
-                    "Invalid feature column (not handled in the visitor");
-              }
-   */
-
-
   // Close the file stream
   ifs.close();
   //
-  // Update the labels supposing that a label is of type int
-  ifs.open(labelFilePath);
-  if (!ifs.is_open() || !ifs.good()) {
-    throw std::runtime_error("The label file stream is not open or not good");
+  if (!numberOfRecords) {
+    throw std::runtime_error("Cannot build an empty dataset (invalid file)");
   }
-  labelVector_.resize(numberOfRecords);
-  std::size_t labelNumber = 0;
-  while (std::getline(ifs, line)) {
-    labelVector_.push_back(std::stoi(line));
-    labelNumber++;
-  }
-  if (labelNumber != numberOfRecords) {
-    std::runtime_error("The label number does not match the number of records");
-  }
-  // Close the file stream
-  ifs.close();
 }
 
 std::pair<label_t, frequency_t>
@@ -161,4 +144,53 @@ const std::vector<std::int32_t> &Dataset::getLabels() const {
 
 const std::vector<feature_vector_t> &Dataset::getFeatureColumns() const {
   return featureColumns_;
+}
+
+std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
+  os << "index\t";
+  for (const auto &col : ds.featureColumns_) {
+    std::visit(
+        [&os](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if (std::is_same_v<T, bool_vector_t>) {
+            os << "BOOL\t\t";
+          } else if (std::is_same_v<T, int_vector_t>) {
+            os << "INT\t\t";
+          } else if (std::is_same_v<T, double_vector_t>) {
+            os << "DOUBLE\t\t";
+          } else {
+            throw std::runtime_error(
+                "Invalid feature column (not handled in the visitor");
+          }
+        },
+        col);
+  }
+  os << "|\tLABEL" << std::endl;
+
+  for (std::size_t i = 0; i < ds.size(); i++) {
+    os << i << ":\t\t";
+    for (const auto &col : ds.featureColumns_) {
+      std::visit(
+          [&os, &i](auto &&arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if (std::is_same_v<T, bool_vector_t>) {
+              if (arg[i]) {
+                os << "true\t\t";
+              } else {
+                os << "false\t\t";
+              }
+            } else if (std::is_same_v<T, int_vector_t>) {
+              os << arg[i] << "\t\t";
+            } else if (std::is_same_v<T, double_vector_t>) {
+              os << arg[i] << "\t\t";
+            } else {
+              throw std::runtime_error(
+                  "Invalid feature column (not handled in the visitor");
+            }
+          },
+          col);
+    }
+    os << "|\t" << ds.labelVector_[i] << std::endl;
+  }
+  return os;
 }
