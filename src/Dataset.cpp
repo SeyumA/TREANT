@@ -182,7 +182,7 @@ std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
             } else if (std::is_same_v<T, int_vector_t>) {
               os << arg[i] << "\t\t";
             } else if (std::is_same_v<T, double_vector_t>) {
-              os << arg[i] << "\t\t";
+              os  << std::fixed << arg[i] << "\t";
             } else {
               throw std::runtime_error(
                   "Invalid feature column (not handled in the visitor");

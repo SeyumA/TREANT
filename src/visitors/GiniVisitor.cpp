@@ -2,8 +2,11 @@
 // Created by dg on 18/11/19.
 //
 
-#include "visitors/GiniVisitor.h"
 #include <map>
+#include "visitors/GiniVisitor.h"
+#include "nodes/BinDoubleNode.h"
+#include "nodes/BinIntNode.h"
+#include "nodes/BooleanNode.h"
 
 GiniVisitor::GiniVisitor(const std::vector<index_t> &validIndexes,
                          const std::vector<label_t> &labels)
@@ -12,24 +15,10 @@ GiniVisitor::GiniVisitor(const std::vector<index_t> &validIndexes,
 
 void GiniVisitor::operator()(const bool_vector_t &boolVector) {
   // This visitor uses a BooleanNode to split a bool_vector_t
-  if (!bestSplitter_) {
-    bestSplitter_ = new BooleanNode(featureIndex_);
-    auto partitions = bestSplitter_->split(validIndexes_, boolVector);
-    impurity_ = calculateImpurity(partitions);
-    std::swap(partitions, bestPartitions_);
-  } else {
-    INode *candidate = new BooleanNode(featureIndex_);
-    auto partitions = candidate->split(validIndexes_, boolVector);
-    const double candidateImpurity = calculateImpurity(partitions);
-    if (candidateImpurity < impurity_) {
-      delete bestSplitter_;
-      bestSplitter_ = candidate;
-      impurity_ = candidateImpurity;
-      std::swap(partitions, bestPartitions_);
-    } else {
-      delete candidate;
-    }
-  }
+  INode *candidate = new BooleanNode(featureIndex_);
+  auto partitions = candidate->split(validIndexes_, boolVector);
+
+  tryAssignNode(candidate, partitions);
 }
 
 void GiniVisitor::operator()(const int_vector_t &intVector) {
@@ -41,24 +30,10 @@ void GiniVisitor::operator()(const int_vector_t &intVector) {
   }
   v /= intVector.size();
 
-  if (!bestSplitter_) {
-    bestSplitter_ = new BinIntNode(featureIndex_, v);
-    auto partitions = bestSplitter_->split(validIndexes_, intVector);
-    impurity_ = calculateImpurity(partitions);
-    std::swap(partitions, bestPartitions_);
-  } else {
-    INode *candidate = new BinIntNode(featureIndex_, v);
-    auto partitions = candidate->split(validIndexes_, intVector);
-    const double candidateImpurity = calculateImpurity(partitions);
-    if (candidateImpurity < impurity_) {
-      delete bestSplitter_;
-      bestSplitter_ = candidate;
-      impurity_ = candidateImpurity;
-      std::swap(partitions, bestPartitions_);
-    } else {
-      delete candidate;
-    }
-  }
+  INode *candidate = new BinIntNode(featureIndex_, v);
+  auto partitions = candidate->split(validIndexes_, intVector);
+
+  tryAssignNode(candidate, partitions);
 }
 
 void GiniVisitor::operator()(const double_vector_t &doubleVector) {
@@ -70,24 +45,10 @@ void GiniVisitor::operator()(const double_vector_t &doubleVector) {
   }
   v /= doubleVector.size();
 
-  if (!bestSplitter_) {
-    bestSplitter_ = new BinDoubleNode(featureIndex_, v);
-    auto partitions = bestSplitter_->split(validIndexes_, doubleVector);
-    impurity_ = calculateImpurity(partitions);
-    std::swap(partitions, bestPartitions_);
-  } else {
-    INode *candidate = new BinIntNode(featureIndex_, v);
-    auto partitions = candidate->split(validIndexes_, doubleVector);
-    const double candidateImpurity = calculateImpurity(partitions);
-    if (candidateImpurity < impurity_) {
-      delete bestSplitter_;
-      bestSplitter_ = candidate;
-      impurity_ = candidateImpurity;
-      std::swap(partitions, bestPartitions_);
-    } else {
-      delete candidate;
-    }
-  }
+  INode *candidate = new BinDoubleNode(featureIndex_, v);
+  auto partitions = candidate->split(validIndexes_, doubleVector);
+
+  tryAssignNode(candidate, partitions);
 }
 
 std::pair<INode *, partitions_t>
@@ -152,4 +113,23 @@ double GiniVisitor::calculateImpurity(
     ret += giniByColumn[j] * colSums[j] / totalFrequency;
   }
   return ret;
+}
+
+void GiniVisitor::tryAssignNode(INode* candidate, partitions_t& partitions) {
+  if (!bestSplitter_) {
+    bestSplitter_ = candidate;
+    impurity_ = calculateImpurity(partitions);
+    std::swap(partitions, bestPartitions_);
+  } else {
+    const double candidateImpurity = calculateImpurity(partitions);
+    if (candidateImpurity < impurity_) {
+      delete bestSplitter_;
+      bestSplitter_ = candidate;
+      impurity_ = candidateImpurity;
+      std::swap(partitions, bestPartitions_);
+    } else {
+      delete candidate;
+      candidate = nullptr;
+    }
+  }
 }

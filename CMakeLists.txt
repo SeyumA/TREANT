@@ -84,3 +84,6 @@ add_test(NAME test_opt_parser COMMAND test_opt_parser)
 
 add_executable(test_decision_tree tests/test_decision_tree.cpp $<TARGET_OBJECTS:treeant_lib>)
 add_test(NAME test_decision_tree COMMAND test_decision_tree)
+
+add_executable(test_utils_format tests/test_utils_format.cpp $<TARGET_OBJECTS:treeant_lib>)
+add_test(NAME test_utils_format COMMAND test_utils_format)

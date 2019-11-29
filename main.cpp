@@ -18,9 +18,10 @@
 int main() {
   std::cout << "Start of the program" << std::endl;
 
-  std::cout << utils::format("hello '{}' pluto '{}'", 3.4555, 6) << std::endl;
+  Dataset dataset("../tests/small_db.txt");
+  std::cout << dataset << std::endl;
+  DecisionTree dt(dataset, 1, DecisionTree::VisitorConstructorTypes::GINI);
 
-  // Dataset myDataset("", "");
   std::cout << "End of program" << std::endl;
   return 0;
 }

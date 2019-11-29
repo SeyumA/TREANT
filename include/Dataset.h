@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <ostream>
+#include <iosfwd>
 
 #include "types.h"
 

@@ -7,6 +7,7 @@
 INode::~INode() {
   for (auto &child : children_) {
     delete child;
+    child = nullptr;
   }
 }
 
