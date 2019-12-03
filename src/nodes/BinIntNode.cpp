@@ -2,8 +2,8 @@
 // Created by dg on 05/11/19.
 //
 
-#include <stdexcept>
 #include "nodes/BinIntNode.h"
+#include <stdexcept>
 
 BinIntNode::BinIntNode(index_t featureIndex, int_feature_t v)
     : INode(featureIndex, {nullptr, nullptr}), v_(v) {}
@@ -38,4 +38,10 @@ label_t BinIntNode::predict(const record_t &record) const {
   } else {
     return children_[0]->predict(record);
   }
+}
+
+std::string BinIntNode::print() const {
+  std::ostringstream oss;
+  oss << "BinIntNode(" << featureIndex_ << ")";
+  return oss.str();
 }

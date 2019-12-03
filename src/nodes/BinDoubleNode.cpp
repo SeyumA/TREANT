@@ -2,8 +2,8 @@
 // Created by dg on 25/11/19.
 //
 
-#include <stdexcept>
 #include "nodes/BinDoubleNode.h"
+#include <stdexcept>
 
 BinDoubleNode::BinDoubleNode(index_t featureIndex, double_feature_t v)
     : INode(featureIndex, {nullptr, nullptr}), v_(v) {}
@@ -40,4 +40,10 @@ BinDoubleNode::split(const partition_t &validIndexes,
   }
   //
   return p;
+}
+
+std::string BinDoubleNode::print() const {
+  std::ostringstream oss;
+  oss << "BinDoubleNode(" << featureIndex_ << ")";
+  return oss.str();
 }

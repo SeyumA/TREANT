@@ -2,11 +2,11 @@
 // Created by dg on 18/11/19.
 //
 
-#include <map>
 #include "visitors/GiniVisitor.h"
 #include "nodes/BinDoubleNode.h"
 #include "nodes/BinIntNode.h"
 #include "nodes/BooleanNode.h"
+#include <map>
 
 GiniVisitor::GiniVisitor(const std::vector<index_t> &validIndexes,
                          const std::vector<label_t> &labels)
@@ -28,7 +28,7 @@ void GiniVisitor::operator()(const int_vector_t &intVector) {
   for (const auto &i : validIndexes_) {
     v += intVector[i];
   }
-  v /= intVector.size();
+  v /= validIndexes_.size();
 
   INode *candidate = new BinIntNode(featureIndex_, v);
   auto partitions = candidate->split(validIndexes_, intVector);
@@ -43,7 +43,7 @@ void GiniVisitor::operator()(const double_vector_t &doubleVector) {
   for (const auto &i : validIndexes_) {
     v += doubleVector[i];
   }
-  v /= doubleVector.size();
+  v /= validIndexes_.size();
 
   INode *candidate = new BinDoubleNode(featureIndex_, v);
   auto partitions = candidate->split(validIndexes_, doubleVector);
@@ -56,8 +56,17 @@ GiniVisitor::getBestSplitterWithPartitions() const {
   return std::make_pair(bestSplitter_, bestPartitions_);
 }
 
-IFeatureVectorVisitor* GiniVisitor::clone() const {
+IFeatureVectorVisitor *GiniVisitor::clone() const {
   return new GiniVisitor(this->validIndexes_, this->labels_);
+}
+
+IFeatureVectorVisitor *
+GiniVisitor::clone(const std::vector<index_t> &validIndexes) const {
+  return new GiniVisitor(validIndexes, this->labels_);
+}
+
+[[nodiscard]] const std::vector<index_t> &GiniVisitor::getValidIndexes() const {
+  return validIndexes_;
 }
 
 void GiniVisitor::visitFeatureVectors(
@@ -103,7 +112,8 @@ double GiniVisitor::calculateImpurity(
   std::vector<double> giniByColumn(partitions.size(), 1.0f);
   for (const auto &pair : labelToFrequencyInPartition) {
     for (std::size_t j = 0; j < pair.second.size(); j++) {
-      const auto relFreq = static_cast<double>(pair.second[j]) / colSums[j];
+      const auto relFreq =
+          colSums[j] ? static_cast<double>(pair.second[j]) / colSums[j] : 0;
       giniByColumn[j] -= relFreq * relFreq;
     }
   }
@@ -115,7 +125,7 @@ double GiniVisitor::calculateImpurity(
   return ret;
 }
 
-void GiniVisitor::tryAssignNode(INode* candidate, partitions_t& partitions) {
+void GiniVisitor::tryAssignNode(INode *candidate, partitions_t &partitions) {
   if (!bestSplitter_) {
     bestSplitter_ = candidate;
     impurity_ = calculateImpurity(partitions);

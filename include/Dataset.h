@@ -35,9 +35,6 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const Dataset& dt);
 
 private:
-  // Support enum class
-  enum class FeatureTypes { BOOL = 0x0, INT, DOUBLE };
-
   std::vector<feature_vector_t> featureColumns_;
   std::vector<label_t> labelVector_;
 };

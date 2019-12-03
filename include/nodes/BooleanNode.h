@@ -22,6 +22,9 @@ public:
   // recursively predict on the next child.
   [[nodiscard]] label_t predict(const record_t &record) const override;
 
+private:
+  // Functions
+  [[nodiscard]] std::string print() const override;
 };
 
 #endif // TREEANT_BOOLEANNODE_H

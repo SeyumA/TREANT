@@ -9,6 +9,8 @@
 #include "utils.h"
 #include <vector>
 
+class DecisionTree;
+
 class INode {
 public:
   explicit INode(index_t featureIndex);
@@ -26,14 +28,19 @@ public:
   [[nodiscard]] virtual label_t predict(const record_t &record) const = 0;
 
   // Visitors that are friend of this class
-  friend std::pair<INode *, std::size_t> utils::buildRecursively(
-      const Dataset &dataset, const std::vector<index_t> &validIndexes,
-      const std::size_t &maxHeight, const std::size_t &callerDepth,
-      IFeatureVectorVisitor *visitor);
+  friend std::pair<INode *, std::size_t>
+  utils::buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
+                          const std::size_t &callerDepth,
+                          IFeatureVectorVisitor *visitor);
+
+  friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
 protected:
   index_t featureIndex_;
   std::vector<INode *> children_;
+
+private:
+  [[nodiscard]] virtual std::string print() const = 0;
 };
 
 #endif // TREEANT_INODE_H

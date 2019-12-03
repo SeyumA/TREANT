@@ -63,10 +63,10 @@ std::map<std::string, std::string> get_options_map(const std::string &args_c) {
 }
 
 std::pair<INode *, std::size_t>
-buildRecursively(const Dataset &dataset,
-                 const std::vector<index_t> &validIndexes,
-                 const std::size_t &maxHeight, const std::size_t &callerDepth,
+buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
+                 const std::size_t &callerDepth,
                  IFeatureVectorVisitor *visitor) {
+  // TODO: try to use references and not pointers
   //
   // Find the best split and continue building the tree
   if (callerDepth >= maxHeight) {
@@ -74,8 +74,11 @@ buildRecursively(const Dataset &dataset,
   } else if (callerDepth + 1 == maxHeight) {
     // A leaf should be returned with the mostPopular label in the subset
     return std::make_pair(
-        new Leaf(dataset.getMostFrequentLabel(validIndexes).first), 1);
-  } else if (const auto [l, f] = dataset.getMostFrequentLabel(validIndexes);
+        new Leaf(
+            dataset.getMostFrequentLabel(visitor->getValidIndexes()).first),
+        1);
+  } else if (const auto [l, f] =
+                 dataset.getMostFrequentLabel(visitor->getValidIndexes());
              f == dataset.size()) {
     return std::make_pair(new Leaf(l), 1);
   } else {
@@ -97,9 +100,10 @@ buildRecursively(const Dataset &dataset,
     std::size_t currHeight = 0;
     for (std::size_t i = 0; i < bestSplitter->children_.size(); ++i) {
       // Build recursively the children
-      IFeatureVectorVisitor *childrenVisitor = visitor->clone();
-      auto [child, h] = buildRecursively(dataset, bestPartitions[i], maxHeight,
-                                         callerDepth + 1, childrenVisitor);
+      IFeatureVectorVisitor *childrenVisitor =
+          visitor->clone(bestPartitions[i]);
+      auto [child, h] = buildRecursively(dataset, maxHeight, callerDepth + 1,
+                                         childrenVisitor);
       bestSplitter->children_[i] = child;
       currHeight = currHeight < h ? h : currHeight;
       delete childrenVisitor;

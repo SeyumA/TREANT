@@ -11,6 +11,12 @@
 #include "features/DoubleFeatureVector.h"
 #include "features/IntFeatureVector.h"
 #include "splitters/DummySplitter.h"
+
+#include "nodes/Leaf.h"
+#include "nodes/BooleanNode.h"
+#include "nodes/BinIntNode.h"
+#include "nodes/BinDoubleNode.h"
+
 #include "visitors/GiniVisitor.h"
 
 #include <cassert>
@@ -20,7 +26,10 @@ int main() {
 
   Dataset dataset("../tests/small_db.txt");
   std::cout << dataset << std::endl;
-  DecisionTree dt(dataset, 1, DecisionTree::VisitorConstructorTypes::GINI);
+  DecisionTree dt(dataset, 3, DecisionTree::VisitorConstructorTypes::GINI);
+
+  std::cout << "Decision tree ----------------" << std::endl;
+  std::cout << dt << std::endl;
 
   std::cout << "End of program" << std::endl;
   return 0;

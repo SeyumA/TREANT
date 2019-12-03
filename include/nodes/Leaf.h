@@ -28,6 +28,9 @@ public:
 
 private:
   label_t label_;
+
+  // Functions
+  [[nodiscard]] std::string print() const override;
 };
 
 #endif // TREEANT_LEAF_H

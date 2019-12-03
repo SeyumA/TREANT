@@ -32,7 +32,6 @@ std::map<std::string, std::string> get_options_map(const std::string &args);
  */
 std::pair<INode *, std::size_t>
 buildRecursively(const Dataset &dataset,
-                 const std::vector<index_t> &validIndexes,
                  const std::size_t &maxHeight, const std::size_t &callerDepth,
                  IFeatureVectorVisitor *visitor);
 

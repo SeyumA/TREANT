@@ -29,9 +29,15 @@ public:
 
   virtual void operator()(const double_vector_t &) = 0;
 
-  virtual void visitFeatureVectors(const std::vector<feature_vector_t>& featureVectors) = 0;
+  virtual void
+  visitFeatureVectors(const std::vector<feature_vector_t> &featureVectors) = 0;
 
-  [[nodiscard]] virtual IFeatureVectorVisitor* clone() const = 0;
+  [[nodiscard]] virtual IFeatureVectorVisitor *clone() const = 0;
+  [[nodiscard]] virtual IFeatureVectorVisitor *
+  clone(const std::vector<index_t> &validIndexes) const = 0;
+
+  [[nodiscard]] virtual const std::vector<index_t>&
+  getValidIndexes() const = 0;
 
   [[nodiscard]] virtual std::pair<INode *, partitions_t>
   getBestSplitterWithPartitions() const = 0;

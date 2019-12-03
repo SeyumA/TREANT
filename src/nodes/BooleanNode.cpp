@@ -2,8 +2,8 @@
 // Created by dg on 06/11/19.
 //
 
-#include <stdexcept>
 #include "nodes/BooleanNode.h"
+#include <stdexcept>
 
 BooleanNode::BooleanNode(index_t featureIndex)
     : INode(featureIndex, {nullptr, nullptr}) {}
@@ -38,4 +38,10 @@ label_t BooleanNode::predict(const record_t &record) const {
   } else {
     return children_[1]->predict(record);
   }
+}
+
+std::string BooleanNode::print() const {
+  std::ostringstream oss;
+  oss << "BooleanNode(" << featureIndex_ << ")";
+  return oss.str();
 }

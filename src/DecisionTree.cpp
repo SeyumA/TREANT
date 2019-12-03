@@ -3,6 +3,7 @@
 //
 
 #include <numeric>
+#include <stack>
 #include <visitors/GiniVisitor.h>
 
 #include "DecisionTree.h"
@@ -27,14 +28,13 @@ DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
   default:
     throw std::runtime_error("Invalid visitorType in DecisionTree constructor");
   }
-
   // Build the tree
   const auto [treeRoot, treeHeight] =
-      utils::buildRecursively(dataset, indexes, maxDepth, 0, visitor);
+      utils::buildRecursively(dataset, maxDepth, 0, visitor);
   // Get the important variables to build the decision tree.
   root_ = treeRoot;
   height_ = treeHeight;
-  //
+  // Do not forget to delete the visitor
   delete visitor;
 }
 
@@ -45,4 +45,32 @@ label_t DecisionTree::predict(const record_t &record) const {
 DecisionTree::~DecisionTree() {
   delete root_;
   root_ = nullptr;
+}
+
+std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
+  // Static lambda
+  static auto printTabs = [&os](std::size_t n) {
+    for (std::size_t i = 0; i < n; i++) {
+      os << '\t';
+    }
+  };
+  // Stack of the node pointers
+  // Stack of the node levels (we need two stack in order for pre-visit)
+  std::stack<std::pair<INode*, std::size_t>> nodePtrStack;
+  nodePtrStack.push({dt.root_, 0});
+  //
+  while (!nodePtrStack.empty()) {
+    // Pop from the  node pointer stack
+    const auto [currNode, currLevel] = nodePtrStack.top();
+    nodePtrStack.pop();
+    // Actual printing of the current node with its spaces
+    printTabs(currLevel);
+    os << currNode->print() << std::endl;
+    // Push the children in the two stacks
+    for (const auto& child : currNode->children_) {
+      nodePtrStack.push({child, currLevel + 1});
+    }
+  }
+  //
+  return os;
 }

@@ -24,6 +24,11 @@ public:
       const std::vector<feature_vector_t> &featureVectors) override;
 
   [[nodiscard]] IFeatureVectorVisitor *clone() const override;
+  [[nodiscard]] IFeatureVectorVisitor *
+  clone(const std::vector<index_t> &validIndexes) const override;
+
+  [[nodiscard]] const std::vector<index_t>&
+  getValidIndexes() const override;
 
   [[nodiscard]] std::pair<INode *, partitions_t>
   getBestSplitterWithPartitions() const override;

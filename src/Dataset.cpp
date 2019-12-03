@@ -5,6 +5,7 @@
 #include "Dataset.h"
 
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <utility>
 
@@ -147,17 +148,22 @@ const std::vector<feature_vector_t> &Dataset::getFeatureColumns() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
-  os << "index\t";
+  static const int indexWidth = 7;
+  static const int boolWidth = 7;
+  static const int intWidth = 8;
+  static const int doubleWidth = 12;
+
+  os << std::setw(indexWidth) << std::left << "index";
   for (const auto &col : ds.featureColumns_) {
     std::visit(
-        [&os](auto &&arg) {
+        [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
           if (std::is_same_v<T, bool_vector_t>) {
-            os << "BOOL\t\t";
+            os << std::setw(boolWidth) << std::left << "BOOL";
           } else if (std::is_same_v<T, int_vector_t>) {
-            os << "INT\t\t";
+            os << std::setw(intWidth) << std::left << "INT";
           } else if (std::is_same_v<T, double_vector_t>) {
-            os << "DOUBLE\t\t";
+            os << std::setw(doubleWidth) << std::left << "DOUBLE";
           } else {
             throw std::runtime_error(
                 "Invalid feature column (not handled in the visitor");
@@ -168,21 +174,21 @@ std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
   os << "|\tLABEL" << std::endl;
 
   for (std::size_t i = 0; i < ds.size(); i++) {
-    os << i << ":\t\t";
+    os << std::setw(indexWidth) << std::left << i;
     for (const auto &col : ds.featureColumns_) {
       std::visit(
-          [&os, &i](auto &&arg) {
+          [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             if (std::is_same_v<T, bool_vector_t>) {
               if (arg[i]) {
-                os << "true\t\t";
+                os << std::setw(boolWidth) << std::left << "true";
               } else {
-                os << "false\t\t";
+                os << std::setw(boolWidth) << std::left << "false";
               }
             } else if (std::is_same_v<T, int_vector_t>) {
-              os << arg[i] << "\t\t";
+              os << std::setw(intWidth) << std::left << arg[i];
             } else if (std::is_same_v<T, double_vector_t>) {
-              os  << std::fixed << arg[i] << "\t";
+              os << std::fixed << std::setw(doubleWidth) << std::left << arg[i];
             } else {
               throw std::runtime_error(
                   "Invalid feature column (not handled in the visitor");
