@@ -66,7 +66,8 @@ std::pair<INode *, std::size_t>
 buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
                  const std::size_t &currDepth,
                  IFeatureVectorVisitor *visitor) {
-  // TODO: try to use references and not pointers
+  // Using references instead of pointers -> we are not allowed to use the
+  // IFeatureVectorVisitor::clone() factory method.
   //
   // Find the best split and continue building the tree
   if (currDepth > maxHeight) {
@@ -83,12 +84,8 @@ buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
     return std::make_pair(new Leaf(l), 1);
   } else {
     // Assuming that there are different labels in the current training subset
-    const auto &featureColumns = dataset.getFeatureColumns();
-    //
-    // TODO: could be a parameter of the function buildRecursively
-    //    GiniVisitor visitor(validIndexes, dataset.getLabels());
-    //
-    visitor->visitFeatureVectors(featureColumns);
+    // (checked in a previous 'else if' statement).
+    visitor->visitFeatureVectors(dataset.getFeatureColumns());
     const auto [bestSplitter, bestPartitions] =
         visitor->getBestSplitterWithPartitions();
     //
