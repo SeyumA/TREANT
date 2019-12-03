@@ -29,7 +29,7 @@ int main() {
   DecisionTree dt(dataset, 3, DecisionTree::VisitorConstructorTypes::GINI);
 
   std::cout << "Decision tree ----------------" << std::endl;
-  std::cout << dt << std::endl;
+  std::cout << dt << std::endl << "It's height is " << dt.getHeight() << '\n';
 
   std::cout << "End of program" << std::endl;
   return 0;

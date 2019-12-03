@@ -24,7 +24,7 @@ std::map<std::string, std::string> get_options_map(const std::string &args);
  * @param subset is a vector of indexes that picks a subset of the dataset
  * @param splitter the ISplitter used to find the best split for this tree
  * @param maxDepth the maximum depth of the resulting tree
- * @param callerDepth the depth of the caller node
+ * @param currDepth the depth of the current node
  * @param visitor is the IFeatureVisitor used to visit the nodes and build the
  * tree
  * @return a pair containing the tree root and the height of the tree rooted by
@@ -32,7 +32,7 @@ std::map<std::string, std::string> get_options_map(const std::string &args);
  */
 std::pair<INode *, std::size_t>
 buildRecursively(const Dataset &dataset,
-                 const std::size_t &maxHeight, const std::size_t &callerDepth,
+                 const std::size_t &maxHeight, const std::size_t &currDepth,
                  IFeatureVectorVisitor *visitor);
 
 template <typename S1, typename S2> std::string concatenate(S1 s1, S2 s2) {

@@ -64,14 +64,14 @@ std::map<std::string, std::string> get_options_map(const std::string &args_c) {
 
 std::pair<INode *, std::size_t>
 buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
-                 const std::size_t &callerDepth,
+                 const std::size_t &currDepth,
                  IFeatureVectorVisitor *visitor) {
   // TODO: try to use references and not pointers
   //
   // Find the best split and continue building the tree
-  if (callerDepth >= maxHeight) {
+  if (currDepth > maxHeight) {
     throw std::runtime_error("callerDepth must be less than maxHeight");
-  } else if (callerDepth + 1 == maxHeight) {
+  } else if (currDepth == maxHeight) {
     // A leaf should be returned with the mostPopular label in the subset
     return std::make_pair(
         new Leaf(
@@ -97,19 +97,20 @@ buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
     for (auto &child : bestSplitter->children_) {
       delete child;
     }
-    std::size_t currHeight = 0;
+    std::size_t maxChildrenHeight = 0;
     for (std::size_t i = 0; i < bestSplitter->children_.size(); ++i) {
       // Build recursively the children
       IFeatureVectorVisitor *childrenVisitor =
           visitor->clone(bestPartitions[i]);
-      auto [child, h] = buildRecursively(dataset, maxHeight, callerDepth + 1,
+      auto [child, h] = buildRecursively(dataset, maxHeight, currDepth + 1,
                                          childrenVisitor);
       bestSplitter->children_[i] = child;
-      currHeight = currHeight < h ? h : currHeight;
+      maxChildrenHeight = maxChildrenHeight < h ? h : maxChildrenHeight;
       delete childrenVisitor;
     }
     //
-    return std::make_pair(bestSplitter, currHeight);
+    // The max height of the children must be incremented by 1, the current node
+    return std::make_pair(bestSplitter, maxChildrenHeight + 1);
   }
 }
 

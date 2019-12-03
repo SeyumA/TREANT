@@ -2,11 +2,13 @@
 // Created by dg on 18/11/19.
 //
 
+// STD library
+#include <map>
+// Local headers
 #include "visitors/GiniVisitor.h"
 #include "nodes/BinDoubleNode.h"
 #include "nodes/BinIntNode.h"
 #include "nodes/BooleanNode.h"
-#include <map>
 
 GiniVisitor::GiniVisitor(const std::vector<index_t> &validIndexes,
                          const std::vector<label_t> &labels)

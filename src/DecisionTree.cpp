@@ -30,12 +30,16 @@ DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
   }
   // Build the tree
   const auto [treeRoot, treeHeight] =
-      utils::buildRecursively(dataset, maxDepth, 0, visitor);
+      utils::buildRecursively(dataset, maxDepth, 1, visitor);
   // Get the important variables to build the decision tree.
   root_ = treeRoot;
   height_ = treeHeight;
   // Do not forget to delete the visitor
   delete visitor;
+}
+
+std::size_t DecisionTree::getHeight() const {
+  return height_;
 }
 
 label_t DecisionTree::predict(const record_t &record) const {

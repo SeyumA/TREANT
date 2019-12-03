@@ -30,11 +30,12 @@ public:
 
   // Functions
   [[nodiscard]] label_t predict(const record_t &) const;
+  std::size_t getHeight() const;
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
 private:
-  unsigned int height_ = 0;
+  std::size_t height_ = 0;
   INode *root_ = nullptr;
 };
 
