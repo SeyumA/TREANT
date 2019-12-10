@@ -80,7 +80,7 @@ buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
         1);
   } else if (const auto [l, f] =
                  dataset.getMostFrequentLabel(visitor->getValidIndexes());
-             f == dataset.size()) {
+             f == visitor->getValidIndexes().size()) {
     return std::make_pair(new Leaf(l), 1);
   } else {
     // Assuming that there are different labels in the current training subset

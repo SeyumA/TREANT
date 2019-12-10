@@ -24,7 +24,7 @@ public:
 
 private:
   // Functions
-  [[nodiscard]] std::string print() const override;
+  [[nodiscard]] std::string stringify() const override;
 };
 
 #endif // TREEANT_BOOLEANNODE_H

@@ -42,8 +42,8 @@ BinDoubleNode::split(const partition_t &validIndexes,
   return p;
 }
 
-std::string BinDoubleNode::print() const {
+std::string BinDoubleNode::stringify() const {
   std::ostringstream oss;
-  oss << "BinDoubleNode(" << featureIndex_ << ")";
+  oss << "BinDoubleNode(feature index = " << featureIndex_ << ")";
   return oss.str();
 }

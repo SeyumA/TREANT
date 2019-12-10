@@ -18,6 +18,8 @@ partitions_t BinIntNode::split(const partition_t &validIndexes,
   // Create the 2 partitions
   partitions_t p(2);
   for (const auto &i : validIndexes) {
+    // Here there is also the possibility of the "unknown variable"
+    // (*intVectorPtr)[i] == v_
     if ((*intVectorPtr)[i] > v_) {
       p[1].push_back(i);
     } else {
@@ -40,8 +42,8 @@ label_t BinIntNode::predict(const record_t &record) const {
   }
 }
 
-std::string BinIntNode::print() const {
+std::string BinIntNode::stringify() const {
   std::ostringstream oss;
-  oss << "BinIntNode(" << featureIndex_ << ")";
+  oss << "BinIntNode(feature index = " << featureIndex_ << ")";
   return oss.str();
 }

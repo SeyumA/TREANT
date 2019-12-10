@@ -13,7 +13,7 @@ partitions_t Leaf::split(const partition_t &validIndexes,
   return p;
 }
 
-std::string Leaf::print() const {
+std::string Leaf::stringify() const {
   std::ostringstream oss;
   oss << "Leaf(label = " << label_ << ")";
   return oss.str();

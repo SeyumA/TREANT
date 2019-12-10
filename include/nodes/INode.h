@@ -30,7 +30,7 @@ public:
   // Visitors that are friend of this class
   friend std::pair<INode *, std::size_t>
   utils::buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
-                          const std::size_t &callerDepth,
+                          const std::size_t &currDepth,
                           IFeatureVectorVisitor *visitor);
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
@@ -40,7 +40,7 @@ protected:
   std::vector<INode *> children_;
 
 private:
-  [[nodiscard]] virtual std::string print() const = 0;
+  [[nodiscard]] virtual std::string stringify() const = 0;
 };
 
 #endif // TREEANT_INODE_H

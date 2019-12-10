@@ -27,7 +27,7 @@ public:
 private:
   double_feature_t v_;
   // Functions
-  [[nodiscard]] std::string print() const override;
+  [[nodiscard]] std::string stringify() const override;
 };
 
 #endif // TREEANT_BINDOUBLENODE_H

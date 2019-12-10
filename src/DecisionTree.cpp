@@ -2,6 +2,7 @@
 // Created by dg on 01/11/19.
 //
 
+#include <functional>
 #include <numeric>
 #include <stack>
 #include <visitors/GiniVisitor.h>
@@ -11,7 +12,6 @@
 
 DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
                            VisitorConstructorTypes visitorType) {
-  //
   // Preliminary checks
   if (dataset.empty()) {
     std::runtime_error("Cannot build a decision tree from an empty dataset");
@@ -38,9 +38,7 @@ DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
   delete visitor;
 }
 
-std::size_t DecisionTree::getHeight() const {
-  return height_;
-}
+std::size_t DecisionTree::getHeight() const { return height_; }
 
 label_t DecisionTree::predict(const record_t &record) const {
   return root_->predict(record);
@@ -52,29 +50,22 @@ DecisionTree::~DecisionTree() {
 }
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
-  // Static lambda
-  static auto printTabs = [&os](std::size_t n) {
-    for (std::size_t i = 0; i < n; i++) {
-      os << '\t';
-    }
-  };
-  // Stack of the node pointers
-  // Stack of the node levels (we need two stack in order for pre-visit)
-  std::stack<std::pair<INode*, std::size_t>> nodePtrStack;
-  nodePtrStack.push({dt.root_, 0});
-  //
-  while (!nodePtrStack.empty()) {
-    // Pop from the  node pointer stack
-    const auto [currNode, currLevel] = nodePtrStack.top();
-    nodePtrStack.pop();
-    // Actual printing of the current node with its spaces
-    printTabs(currLevel);
-    os << currNode->print() << std::endl;
-    // Push the children in the two stacks
-    for (const auto& child : currNode->children_) {
-      nodePtrStack.push({child, currLevel + 1});
-    }
-  }
-  //
-  return os;
+  // Recursive lambda for a depth first search visit
+  std::function<std::string(INode *, std::string &, std::size_t)> treeAsString =
+      [&treeAsString](INode *nToVisit, std::string &s, std::size_t lev) {
+        // Append the current node taking into account its depth
+        for (std::size_t i = 0; i < lev; i++) {
+          s.append("\t");
+        }
+        s.append(nToVisit->stringify() + '\n');
+        // Recursive call (DFS)
+        for (const auto& child : nToVisit->children_) {
+          treeAsString(child, s, lev + 1);
+        }
+        //
+        return s;
+      };
+
+  std::string s;
+  return os << treeAsString(dt.root_, s, 0);
 }

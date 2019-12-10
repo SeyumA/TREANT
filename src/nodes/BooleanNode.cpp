@@ -33,15 +33,15 @@ label_t BooleanNode::predict(const record_t &record) const {
   if (!boolFeaturePtr) {
     throw std::runtime_error(
         "BooleanNode::predict() called on a non-bool_feature_t");
-  } else if (*boolFeaturePtr) {
+  } else if (!*boolFeaturePtr) {
     return children_[0]->predict(record);
   } else {
     return children_[1]->predict(record);
   }
 }
 
-std::string BooleanNode::print() const {
+std::string BooleanNode::stringify() const {
   std::ostringstream oss;
-  oss << "BooleanNode(" << featureIndex_ << ")";
+  oss << "BooleanNode(feature index = " << featureIndex_ << ")";
   return oss.str();
 }
