@@ -21,6 +21,7 @@
 
 #include <cassert>
 
+
 int main() {
   std::cout << "Start of the program" << std::endl;
 

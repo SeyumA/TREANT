@@ -34,7 +34,7 @@ DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
   // Get the important variables to build the decision tree.
   root_ = treeRoot;
   height_ = treeHeight;
-  // Do not forget to delete the visitor
+  // Do not forget to delete the visitor avoiding memory leaks
   delete visitor;
 }
 

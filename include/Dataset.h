@@ -35,7 +35,7 @@ public:
   friend std::ostream& operator<<(std::ostream& os, const Dataset& dt);
 
 private:
-  std::vector<feature_vector_t> featureColumns_;
+  std::vector<std::vector<double_feature_t>> featureColumns_;
   std::vector<label_t> labelVector_;
 };
 
