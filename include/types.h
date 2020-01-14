@@ -10,7 +10,7 @@
 #include <vector>  // needed for std::vector
 
 using frequency_t = std::size_t;
-using label_t = std::int32_t;
+using label_t = bool;
 using partition_t = std::vector<std::size_t>;
 using partitions_t = std::vector<std::vector<std::size_t>>;
 using index_t = std::size_t;

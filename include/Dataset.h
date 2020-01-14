@@ -20,25 +20,28 @@
 class Dataset final {
 
 public:
-  explicit Dataset(const std::string &featureFilePath);
+    explicit Dataset(const std::string &featureFilePath);
 
-  // These functions are needed for node
-  [[nodiscard]] const std::vector<label_t> &getLabels() const;
-  [[nodiscard]] const std::vector<feature_vector_t> &getFeatureColumns() const;
+    // These functions are needed for node
+    [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  [[nodiscard]] std::pair<label_t, frequency_t>
-  getMostFrequentLabel(const std::vector<index_t>& validIndexes) const;
-  
-  [[nodiscard]] bool empty() const { return labelVector_.empty(); }
-  [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
+    [[nodiscard]] const std::vector<std::vector<double_feature_t>> &getFeatureColumns() const;
 
-  friend std::ostream& operator<<(std::ostream& os, const Dataset& dt);
+    [[nodiscard]] std::pair<label_t, frequency_t>
+    getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
+
+    [[nodiscard]] bool empty() const { return labelVector_.empty(); }
+
+    [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
+
+    friend std::ostream &operator<<(std::ostream &os, const Dataset &dt);
 
 private:
-  std::vector<std::vector<double_feature_t>> featureColumns_;
-  std::vector<label_t> labelVector_;
+    std::vector<std::string> featureNames_;
+    std::vector<std::vector<double_feature_t>> featureColumns_;
+    std::vector<label_t> labelVector_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Dataset& dt);
+std::ostream &operator<<(std::ostream &os, const Dataset &dt);
 
 #endif // TREEANT_DATASET_H
