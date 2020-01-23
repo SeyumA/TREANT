@@ -25,7 +25,7 @@ public:
     // These functions are needed for node
     [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-    [[nodiscard]] const std::vector<std::vector<double_feature_t>> &getFeatureColumns() const;
+    [[nodiscard]] const std::vector<feature_vector_t> &getFeatureColumns() const;
 
     [[nodiscard]] std::pair<label_t, frequency_t>
     getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
@@ -38,7 +38,7 @@ public:
 
 private:
     std::vector<std::string> featureNames_;
-    std::vector<std::vector<double_feature_t>> featureColumns_;
+    std::vector<feature_vector_t> featureColumns_;
     std::vector<label_t> labelVector_;
 };
 

@@ -31,7 +31,6 @@ using int_vector_t = std::vector<int_feature_t>;
 using double_vector_t = std::vector<double_feature_t>;
 
 // The feature_vector_t must contain all the possible kind of feature vectors.
-using feature_vector_t =
-    std::variant<bool_vector_t, int_vector_t, double_vector_t>;
+using feature_vector_t = double_vector_t;
 
 #endif // TREEANT_TYPES_H

@@ -28,49 +28,23 @@ set(SOURCES
         # Headers
         include/utils.h
         include/types.h
-        include/nodes/INode.h
         include/Logger.h
         include/OptParser.h
-        include/nodes/INode.h
-        include/nodes/Leaf.h
-        include/nodes/BinIntNode.h
-        include/nodes/BooleanNode.h
-        include/nodes/BinDoubleNode.h
-        include/splitters/ISplitter.h
-
-        #include/splitters/DummySplitter.h
-
+        include/Node.h
         include/DecisionTree.h
         include/Dataset.h
-
-        #include/features/IFeatureVector.h
-        #include/features/IntFeatureVector.h
-        #include/features/BoolFeatureVector.h
-        #include/features/DoubleFeatureVector.h
-
-        include/visitors/IFeatureVectorVisitor.h
-        include/visitors/GiniVisitor.h
+        include/SplitOptimizer.h
+        include/Attacker.h
 
         # Sources
         src/utils.cpp
         src/Logger.cpp
         src/OptParser.cpp
-        src/nodes/INode.cpp
-        src/nodes/Leaf.cpp
-        src/nodes/BinIntNode.cpp
-        src/nodes/BinDoubleNode.cpp
-        src/nodes/BooleanNode.cpp
-        #src/splitters/DummySplitter.cpp
         src/DecisionTree.cpp
         src/Dataset.cpp
-
-        #src/features/IFeatureVector.cpp
-        #src/features/IntFeatureVector.cpp
-        #src/features/BoolFeatureVector.cpp
-        #src/features/DoubleFeatureVector.cpp
-
-        src/visitors/GiniVisitor.cpp
-        )
+        src/Node.cpp
+        src/SplitOptimizer.cpp
+        src/Attacker.cpp)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})

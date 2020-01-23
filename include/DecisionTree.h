@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "Dataset.h"
-#include "nodes/INode.h"
-#include "splitters/ISplitter.h"
+
+class Node;
 
 class DecisionTree final {
 
@@ -19,7 +19,9 @@ public:
 
   // Constructors
   DecisionTree() = delete;
+
   DecisionTree(DecisionTree &) = delete;
+
   DecisionTree(DecisionTree &&) = delete;
 
   explicit DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
@@ -30,13 +32,23 @@ public:
 
   // Functions
   [[nodiscard]] label_t predict(const record_t &) const;
-  std::size_t getHeight() const;
+
+  [[nodiscard]] std::size_t getHeight() const;
+
+  void fit(const Dataset &dataset);
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
 private:
+  std::size_t maxDepth_;
   std::size_t height_ = 0;
-  INode *root_ = nullptr;
+  Node *root_ = nullptr;
+  bool isTrained_;
+
+  Node *fitRecursively(const Dataset &dataset,
+                       const std::vector<std::size_t> &rows,
+                       const std::vector<bool>& blackList,
+                       std::size_t currHeight /*attacker, cost, ...*/);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);

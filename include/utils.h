@@ -10,7 +10,7 @@
 #include <sstream>
 #include <string>
 
-class INode;
+class Node;
 class Dataset;
 class IFeatureVectorVisitor;
 
@@ -30,9 +30,16 @@ std::map<std::string, std::string> get_options_map(const std::string &args);
  * @return a pair containing the tree root and the height of the tree rooted by
  * the first output
  */
-std::pair<INode *, std::size_t>
+std::pair<Node *, std::size_t>
 buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
-                 const std::size_t &currDepth, IFeatureVectorVisitor *visitor);
+                 const std::size_t &currDepth, IFeatureVectorVisitor *visitor
+                 //, attacker,
+                 // cost,
+                 // nodePrediction,
+                 // featureBlackList,
+                 // constraints
+                 // ...
+                 );
 
 template <typename S1, typename S2> std::string concatenate(S1 s1, S2 s2) {
   std::stringstream ss;
