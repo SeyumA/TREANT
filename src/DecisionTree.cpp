@@ -72,7 +72,8 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   return os << treeAsString(dt.root_, s, 0);
 }
 
-void DecisionTree::fit(const Dataset &dataset) {
+void DecisionTree::fit(const Dataset &dataset,
+                       SplitOptimizer::Impurity impurityType) {
 
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fit: Invalid "
@@ -92,7 +93,7 @@ void DecisionTree::fit(const Dataset &dataset) {
 
   std::vector<std::size_t> rows(dataset.size());
   std::iota(rows.begin(), rows.end(), 0);
-  root_ = fitRecursively(dataset, rows, std::vector<bool>(), 0);
+  root_ = fitRecursively(dataset, rows, std::vector<bool>(), 0, impurityType);
 
   isTrained_ = true;
 }
@@ -100,7 +101,10 @@ void DecisionTree::fit(const Dataset &dataset) {
 Node *DecisionTree::fitRecursively(const Dataset &dataset,
                                    const std::vector<std::size_t> &rows,
                                    const std::vector<bool> &blackList,
-                                   std::size_t currHeight) {
+                                   std::size_t currHeight,
+                                   const Attacker &attacker,
+                                   const std::vector<std::size_t> &costs,
+                                   SplitOptimizer::Impurity impurityType) {
 
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fitRecursively: Invalid "
@@ -112,6 +116,12 @@ Node *DecisionTree::fitRecursively(const Dataset &dataset,
   }
 
   // TODO: find the best split with the optimizer
+
+  auto splitOptimizer = SplitOptimizer(impurityType);
+  const auto [bestSplitFeature, bestSplitValue] =
+      splitOptimizer.optimize_gain(dataset, rows, blackList, attacker, costs);
+
+  // Update the costs
 
   // Base case, the recursion is just started
   if (blackList.empty()) {

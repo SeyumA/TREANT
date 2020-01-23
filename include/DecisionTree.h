@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Dataset.h"
+#include "SplitOptimizer.h"
 
 class Node;
 
@@ -35,7 +36,7 @@ public:
 
   [[nodiscard]] std::size_t getHeight() const;
 
-  void fit(const Dataset &dataset);
+  void fit(const Dataset &dataset, SplitOptimizer::Impurity impurityType);
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
@@ -47,8 +48,10 @@ private:
 
   Node *fitRecursively(const Dataset &dataset,
                        const std::vector<std::size_t> &rows,
-                       const std::vector<bool>& blackList,
-                       std::size_t currHeight /*attacker, cost, ...*/);
+                       const std::vector<bool> &blackList,
+                       std::size_t currHeight /*attacker, cost, ...*/,
+                       const Attacker &attacker,
+                       SplitOptimizer::Impurity impurityType);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
