@@ -6,18 +6,30 @@
 #include "utils.h"
 
 Node::Node()
-    : bestSplitFeatureId_(std::nullopt), bestSplitValue_(std::nullopt),
-      left_(nullptr), right_(nullptr) {}
+    : prediction_(false), bestSplitFeatureId_(std::nullopt),
+      bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
 
 Node::Node(bool prediction)
-    : prediction_(prediction), bestSplitValue_(std::nullopt), left_(nullptr),
-      right_(nullptr) {}
+    : prediction_(prediction), bestSplitFeatureId_(std::nullopt),
+      bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
+
+Node::Node(index_t bestSplitFeatureId, feature_t bestSplitValue)
+    : prediction_(false), bestSplitFeatureId_(bestSplitFeatureId),
+      bestSplitValue_(bestSplitValue), left_(nullptr), right_(nullptr) {}
 
 Node::~Node() {
   delete left_;
   delete right_;
   left_ = nullptr;
   right_ = nullptr;
+}
+
+void Node::setLeft(Node* left) {
+  left_ = left;
+}
+
+void Node::setRight(Node* right) {
+  right_ = right;
 }
 
 label_t Node::predict(const record_t &) const { return false; }

@@ -127,6 +127,10 @@ const std::vector<std::vector<double_feature_t>> &Dataset::getFeatureColumns() c
     return featureColumns_;
 }
 
+const feature_vector_t &Dataset::getFeatureColumn(index_t i) const {
+  return featureColumns_[i];
+}
+
 std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
     static const int indexWidth = 7;
     static const int doubleWidth = 12;

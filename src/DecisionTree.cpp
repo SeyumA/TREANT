@@ -72,7 +72,7 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   return os << treeAsString(dt.root_, s, 0);
 }
 
-void DecisionTree::fit(const Dataset &dataset,
+void DecisionTree::fit(const Dataset &dataset, int budget,
                        SplitOptimizer::Impurity impurityType) {
 
   if (dataset.empty()) {
@@ -93,62 +93,108 @@ void DecisionTree::fit(const Dataset &dataset,
 
   std::vector<std::size_t> rows(dataset.size());
   std::iota(rows.begin(), rows.end(), 0);
-  root_ = fitRecursively(dataset, rows, std::vector<bool>(), 0, impurityType);
+  std::vector<int> costs(dataset.size(), budget);
+  root_ = fitRecursively(dataset, rows, std::vector<bool>(), 1, Attacker(),
+                         costs, impurityType);
+
+  // ...
 
   isTrained_ = true;
 }
 
 Node *DecisionTree::fitRecursively(const Dataset &dataset,
-                                   const std::vector<std::size_t> &rows,
-                                   const std::vector<bool> &blackList,
+                                   const indexes_t &rows,
+                                   const indexes_t &validFeatures,
                                    std::size_t currHeight,
                                    const Attacker &attacker,
-                                   const std::vector<std::size_t> &costs,
+                                   const std::vector<int> &costs,
                                    SplitOptimizer::Impurity impurityType) {
 
-  if (dataset.empty()) {
+  if (dataset.empty() || rows.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fitRecursively: Invalid "
                              "input data (empty dataset)");
   }
 
+  // First base case
   if (currHeight > maxDepth_) {
     return nullptr;
   }
 
-  // TODO: find the best split with the optimizer
-
-  auto splitOptimizer = SplitOptimizer(impurityType);
-  const auto [bestSplitFeature, bestSplitValue] =
-      splitOptimizer.optimize_gain(dataset, rows, blackList, attacker, costs);
-
-  // Update the costs
-
-  // Base case, the recursion is just started
-  if (blackList.empty()) {
-
-    // Return the mean of y
-    const auto labels = dataset.getLabels();
-    std::size_t countFalse = 0;
-    std::size_t countTrue = 0;
-    for (const auto &label : labels) {
-      if (!label) {
-        countFalse++;
-      } else {
-        countTrue++;
-      }
+  // Count true and false, could lead to a base case (see below)
+  const auto &labels = dataset.getLabels();
+  std::size_t countFalse = 0;
+  std::size_t countTrue = 0;
+  for (const auto &row : rows) {
+    if (!labels[row]) {
+      countFalse++;
+    } else {
+      countTrue++;
     }
-    auto toBeReturned = new Node(countFalse < countTrue);
-
-    std::vector<bool> blackListLeft(dataset.size());
-
-    toBeReturned.left = fitRecursively()
   }
 
-  // Calculate the best split of the subset given by rows
-
-  // Create the new node
-
+  // Other base cases
+  if (currHeight == maxDepth_) {
+    // Returns false if the majority of the labels is false otherwise true,
+    // tie case -> false.
+    return new Node(countFalse < countTrue);
+  }
   // If all the labels are already clustered do NOT do the recursive call
+  else if (!countTrue) {
+    return new Node(false);
+  } else if (!countFalse) {
+    return new Node(true);
+  }
+  // TODO: if you put the minimum number of instances per node and the instances
+  //       falling in this node are less than this number then we have another
+  //       base case (see base case 3 in parallel_robust_forest.py)
 
-  return nullptr;
+  // We recreate the optimizer at each node for concurrency reasons
+  auto splitOptimizer = SplitOptimizer(impurityType);
+  // Get the best split
+  gain_t gain;
+  index_t bestSplitFeatureId;
+  feature_t bestSplitValue;
+  indexes_t rowsLeft;
+  indexes_t rowsRight;
+  // Find the best split with the optimizer
+  std::tie(gain, bestSplitFeatureId, bestSplitValue, rowsLeft, rowsRight) =
+      splitOptimizer.optimizeGain(dataset, rows, blackList, attacker, costs);
+
+  if (gain > 0.0) {
+    // Build the node to be returned
+    auto toBeReturned = new Node(bestSplitFeatureId, bestSplitValue);
+    //
+    // Prepare for the recursive step
+    // Build the blackListLeft
+    std::vector<bool> blackListDownstream(blackList);
+    if (blackListDownstream.empty()) {
+      blackListDownstream.resize(dataset.size(), false);
+    }
+    blackListDownstream[bestSplitFeatureId] = true;
+
+    // TODO: Update the costs
+    std::vector<int> costsLeft(costs);
+    costsLeft[bestSplitFeatureId] -= 10; // this must be modified
+    std::vector<int> costsRight(costs);
+    costsRight[bestSplitFeatureId] -= 10; // this must be modified
+
+    // TODO: update constraints
+    //       constraints ... maybe from the optimizeGain
+
+    // Set the left node
+    Node *leftNode =
+        fitRecursively(dataset, rowsLeft, blackListDownstream, currHeight + 1,
+                       attacker, costsLeft, impurityType);
+    toBeReturned->setLeft(leftNode);
+    // Set the right node
+    Node *rightNode =
+        fitRecursively(dataset, rowsRight, blackListDownstream, currHeight + 1,
+                       attacker, costsRight, impurityType);
+    toBeReturned->setRight(rightNode);
+
+    return toBeReturned;
+
+  } else {
+    return new Node(countFalse < countTrue);
+  }
 }

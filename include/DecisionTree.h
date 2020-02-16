@@ -36,7 +36,8 @@ public:
 
   [[nodiscard]] std::size_t getHeight() const;
 
-  void fit(const Dataset &dataset, SplitOptimizer::Impurity impurityType);
+  void fit(const Dataset &dataset, int budget,
+           SplitOptimizer::Impurity impurityType);
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
@@ -46,11 +47,10 @@ private:
   Node *root_ = nullptr;
   bool isTrained_;
 
-  Node *fitRecursively(const Dataset &dataset,
-                       const std::vector<std::size_t> &rows,
-                       const std::vector<bool> &blackList,
+  Node *fitRecursively(const Dataset &dataset, const indexes_t &rows,
+                       const indexes_t &validFeatures,
                        std::size_t currHeight /*attacker, cost, ...*/,
-                       const Attacker &attacker,
+                       const Attacker &attacker, const std::vector<int> &costs,
                        SplitOptimizer::Impurity impurityType);
 };
 
