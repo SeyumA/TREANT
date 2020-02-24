@@ -9,8 +9,6 @@
 
 #include "Node.h"
 
-#include "visitors/GiniVisitor.h"
-
 namespace utils {
 
     std::map<std::string, std::string> get_options_map(const std::string &args_c) {
@@ -83,4 +81,4 @@ namespace utils {
         return std::make_pair(root, 0);
     }
 
-}
+} // end of utils namespace

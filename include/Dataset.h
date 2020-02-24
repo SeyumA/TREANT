@@ -10,8 +10,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "types.h"
+#include "DecisionTree.h"
+#include "FeatureColumn.h"
 
 /**
  * The FeatureTypes enum must be consistent with feature_t
@@ -20,14 +23,17 @@
 class Dataset final {
 
 public:
+
   explicit Dataset(const std::string &featureFilePath);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  [[nodiscard]] const std::vector<feature_vector_t> &getFeatureColumns() const;
+  [[nodiscard]] const std::vector<FeatureColumn> &getFeatureColumns() const;
 
-  [[nodiscard]] const feature_vector_t &getFeatureColumn(index_t i) const;
+  [[nodiscard]] const FeatureColumn &getFeatureColumn(index_t i) const;
+
+  [[nodiscard]] std::string getFeatureName(index_t i) const;
 
   [[nodiscard]] std::pair<label_t, frequency_t>
   getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
@@ -36,11 +42,13 @@ public:
 
   [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
 
+  [[nodiscard]] prediction_t getDefaultPrediction() const;
+
   friend std::ostream &operator<<(std::ostream &os, const Dataset &dt);
 
 private:
   std::vector<std::string> featureNames_;
-  std::vector<feature_vector_t> featureColumns_;
+  std::vector<FeatureColumn> featureColumns_;
   std::vector<label_t> labelVector_;
 };
 

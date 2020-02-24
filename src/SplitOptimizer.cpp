@@ -6,118 +6,178 @@
 #include <cassert>
 #include <stdexcept>
 
-SplitOptimizer::SplitOptimizer(SplitOptimizer::Impurity impurityType) {
+SplitOptimizer::SplitOptimizer(Impurity impurityType) {
 
   switch (impurityType) {
   case Impurity::GINI:
     throw std::runtime_error("Implement GINI");
+    break;
   case Impurity::SSE:
     getLoss_ = [](const Dataset &dataset, const indexes_t &validInstances,
-                  bool yPred) {
+                  label_t yPred) {
       double sum = 0.0;
       const auto &labels = dataset.getLabels();
       for (const auto &i : validInstances) {
-        double diff = labels[i] == yPred ? 0.0 : 1.0;
+        const double diff = labels[i] - yPred;
         sum += diff * diff;
       }
       return sum;
     };
+    break;
   case Impurity::MSE:
     throw std::runtime_error("Implement MSE");
+    break;
   case Impurity::ENTROPY:
     throw std::runtime_error("Implement ENTROPY");
+    break;
   default:
     throw std::runtime_error("Not valid impurity type");
+    break;
   }
 }
 
-void SplitOptimizer::simulateSplit(
-    const Dataset &dataset, const indexes_t &validInstances,
-    const indexes_t &validFeatures, const Attacker &attacker,
-    const std::vector<int> &costs, feature_t splittingValue,
-    index_t splittingFeature, feature_vector_t &leftSplit,
-    feature_vector_t &rightSplit, feature_vector_t &unknownSplit) const {
+void SplitOptimizer::simulateSplit(const Dataset &dataset,
+                                   const indexes_t &validInstances,
+                                   const Attacker &attacker,
+                                   const std::vector<cost_t> &costs,
+                                   const generic_feature_t &splittingValue,
+                                   const index_t &splittingFeature,
+                                   // outputs
+                                   indexes_t &leftSplit,
+                                   indexes_t &rightSplit,
+                                   indexes_t &unknownSplit) const {
 
+  // Prepare the output
+  if (!(leftSplit.empty() && rightSplit.empty() && unknownSplit.empty())) {
+    throw std::runtime_error(
+        "ERROR in simulateSplit: all outputs must be empty at the beginning");
+  }
 
+  bool isNumerical = dataset.getFeatureColumn(splittingFeature).isNumerical();
+  const auto vPtrAsFp = std::get_if<fp_feature_t>(&splittingValue);
+  const auto vPtrAsCt = std::get_if<ct_feature_t>(&splittingValue);
 
+  if (!( (isNumerical && vPtrAsFp) || (!isNumerical && vPtrAsCt) )) {
+    throw std::runtime_error(
+        "ERROR in simulateSplit: splittingValue NOT consistent");
+  }
 
+  for (const auto& i : validInstances) {
+    const auto cost = costs[i];
+    // The attack on a specific instance 'i' to its feature 'splittingFeature'
+    // generates a set of new feature,
+    // of those we are interested only in the i-th column
 
+    // See line 1014 of parallel_robust_forest.py
+    bool allLeft = true;
+    bool allRight = true;
+
+    const std::string featureName = dataset.getFeatureName(splittingFeature);
+    if (isNumerical) {
+      const fp_feature_t v = std::get<fp_feature_t>(splittingValue);
+      std::vector<fp_feature_t> attacks = attacker.attack(featureName, v, cost);
+      for (const auto& atk : attacks) {
+        if (atk <= v) {
+          allRight = false;
+        } else {
+          allLeft = false;
+        }
+        if (!allLeft && !allRight) {
+          break;
+        }
+      }
+    } else {
+      const ct_feature_t v = std::get<ct_feature_t>(splittingValue);
+      std::vector<ct_feature_t> attacks = attacker.attack(featureName, v, cost);
+      for (const auto& atk : attacks) {
+        if (atk == v) {
+          allRight = false;
+        } else {
+          allLeft = false;
+        }
+        if (!allLeft && !allRight) {
+          break;
+        }
+      }
+    } // end if isNumerical
+    // Modify the output vectors accordingly
+    if (allLeft) {
+      leftSplit.push_back(i);
+    } else if (allRight) {
+      rightSplit.push_back(i);
+    } else {
+      unknownSplit.push_back(i);
+    }
+  } // end of loop over instances
 }
 
 bool SplitOptimizer::optimizeSSE(const Dataset &dataset,
                                  const indexes_t &validInstances,
-                                 const split_t &bestSplit, double &yHatLeft,
-                                 double &yHatRight, double &sse) const {
+                                 const indexes_t &leftSplit,
+                                 const indexes_t &rightSplit,
+                                 const indexes_t &unknownSplit,
+                                 double &yHatLeft, double &yHatRight,
+                                 double &sse) const {
 
   // TODO implement this also with static
   //     Use the external library
-
-  // This function returns the 2 best thresholds (left and right) for the
-
-  if (dataset.empty()) {
-    return false;
-  }
-
-  return false;
+  throw std::runtime_error("optimizeSSE is not implemented");
 }
 
-std::tuple<gain_t, index_t, feature_t, indexes_t, indexes_t>
-SplitOptimizer::optimizeGain(const Dataset &dataset,
-                             const indexes_t &validInstances,
-                             const indexes_t &validFeatures,
-                             const Attacker &attacker,
-                             const std::vector<cost_t> &costs) const {
+bool SplitOptimizer::optimizeGain(
+    const Dataset &dataset, const indexes_t &validInstances,
+    const indexes_t &validFeatures, const Attacker &attacker,
+    const std::vector<cost_t> &costs,
+    const std::vector<Constraint> &constraints, const double &currentScore,
+    const double &currentPredictionScore, // (used by)/(forward to) optimizeSSE
+    // outputs
+    // TODO: better put this in 2 structs (one left, one right) and return it
+    gain_t &bestGain, indexes_t &bestSplitLeftFeatureId,
+    indexes_t &bestSplitRightFeatureId, index_t &bestSplitFeatureId,
+    split_value_t &bestSplitValue, split_value_t &bestNextSplitValue,
+    prediction_t &bestPredLeft, prediction_t &bestPredRight, double &bestSSEuma,
+    std::vector<Constraint> &constraintsLeft,
+    std::vector<Constraint> &constraintsRight, std::vector<cost_t> &costsLeft,
+    std::vector<cost_t> &costsRight) const {
 
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
   assert(!validInstances.empty());
 
-  // Build a map [feature_id, possible feature choices] that includes only the
-  // feature still available (not already used, so not in the blacklist)
+  // Default value of the gain, returns how much we can improve the current
+  // score.
+  bestGain = 0.0;
 
-  // Here we just make a double nested loop on instances and features and then
-  // we call optimizeSSE For each valid feature and for each valid
-  // instance
+  for (const auto &splittingFeature : validFeatures) {
 
-  // Get the current prediction that is just the mean value of the labels
-  // of the subset instances
-  const bool currPrediction =
-      SplitOptimizer::getDefaultPrediction(dataset, validInstances);
+    // Build a set of unique feature values
+    // TODO: Could be cached but optimizeGain is called only once in
+    // fitRecursively
+    const auto currentColumn = dataset.getFeatureColumn(splittingFeature);
+    const auto uniqueFeatureValues = currentColumn.getUniqueValues();
 
-  // Get the default score
-  // It is calculated with evaluate_split in the python code
-  // with self.split_optimizer.evaluate_split (line 1521) ->
-  // usually SplitOptimizer._SplitOptimizer__sse; could be also logloss
-  // gini, ... so we put it in the getLoss_ function
-  double currScore = getLoss_(dataset, validInstances, currPrediction);
-
-  // Default value of the gain, so how much we can improve the current score.
-  gain_t bestGain = 0.0;
-
-  for (const auto &validFeatureIndex : validFeatures) {
-    const auto &featureVector = dataset.getFeatureColumn(validFeatureIndex);
-    for (const auto &validInstance : validInstances) {
+    for (const auto &splittingValue : uniqueFeatureValues) {
       // Take the candidate splitting value among the valid instances
       // TODO: use quantiles as splitting values
-      feature_t splittingValue = featureVector[validInstance];
+
       // find the best split with this value
       // line 1169 of the python code it is called self.__simulate_split
-      const auto currentSplit =
-          simulateSplit(dataset, validInstances, validFeatures, attacker, costs,
-                        splittingValue, validFeatureIndex);
+      indexes_t leftSplit, rightSplit, unknownSplit;
+      simulateSplit(dataset, validInstances, attacker, costs, splittingValue,
+                    splittingFeature, leftSplit, rightSplit, unknownSplit);
       //
       // TODO: propagate the constraints (see lines 1177-1190)
       //
 
       double yHatLeft, yHatRight, sse;
-      bool optSuccess = optimizeSSE(dataset, validInstances, currentSplit,
-                                    yHatLeft, yHatRight, sse);
+      bool optSuccess =
+          optimizeSSE(dataset, validInstances, leftSplit, rightSplit,
+                      unknownSplit, yHatLeft, yHatRight, sse);
 
       if (optSuccess) {
-        const double currGain = currScore - sse;
+        const double currGain = currentScore - sse;
         if (currGain > bestGain) {
           bestGain = currGain;
-
         }
       }
       // TODO: continue from here
@@ -126,16 +186,11 @@ SplitOptimizer::optimizeGain(const Dataset &dataset,
     }
   }
 
-  return {0.0, 0, 1.5, std::vector<index_t>(), std::vector<index_t>()};
+  return false;
 }
-bool SplitOptimizer::getDefaultPrediction(const Dataset &dataset,
-                                          const indexes_t &validInstances) {
-  const auto &labels = dataset.getLabels();
-  double sumLabels = 0.0;
-  for (const auto &validInstance : validInstances) {
-    double yAsDouble = labels[validInstance] ? 1.0 : 0.0;
-    sumLabels += yAsDouble;
-  }
-  const double mean = sumLabels / static_cast<double>(validInstances.size());
-  return mean > 0.5;
+
+double SplitOptimizer::evaluateSplit(const Dataset &dataset,
+                                     const indexes_t &rows,
+                                     prediction_t prediction) const {
+  return getLoss_(dataset, rows, prediction);
 }

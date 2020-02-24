@@ -5,41 +5,15 @@
 #include <functional>
 #include <numeric>
 #include <stack>
-#include <visitors/GiniVisitor.h>
 
+#include "Attacker.h"
+#include "Constraint.h"
+#include "Dataset.h"
 #include "DecisionTree.h"
 #include "Node.h"
-#include "utils.h"
+#include "SplitOptimizer.h"
 
-DecisionTree::DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
-                           VisitorConstructorTypes visitorType)
-    : maxDepth_(maxDepth) {
-  // Preliminary checks
-  if (dataset.empty()) {
-    std::runtime_error("Cannot build a decision tree from an empty dataset");
-  }
-  //  // Build the vector of indexes, at the beginning are all
-  //  std::vector<index_t> indexes(dataset.size());
-  //  std::iota(indexes.begin(), indexes.end(), 0);
-  //  // Can be a parameter of the class or an argument of the constructor
-  //  IFeatureVectorVisitor *visitor = nullptr;
-  //  switch (visitorType) {
-  //  case VisitorConstructorTypes::GINI:
-  //    visitor = new GiniVisitor(indexes, dataset.getLabels());
-  //    break;
-  //  default:
-  //    throw std::runtime_error("Invalid visitorType in DecisionTree
-  //    constructor");
-  //  }
-  //  // Build the tree
-  //  const auto [treeRoot, treeHeight] =
-  //      utils::buildRecursively(dataset, maxDepth, 1, visitor);
-  //  // Get the important variables to build the decision tree.
-  //  root_ = treeRoot;
-  //  height_ = treeHeight;
-  //  // Do not forget to delete the visitor avoiding memory leaks
-  //  delete visitor;
-}
+DecisionTree::DecisionTree(std::size_t maxDepth) : maxDepth_(maxDepth) {}
 
 std::size_t DecisionTree::getHeight() const { return height_; }
 
@@ -73,42 +47,48 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
 }
 
 void DecisionTree::fit(const Dataset &dataset, int budget,
-                       SplitOptimizer::Impurity impurityType) {
-
+                       Impurity impurityType) {
+  // Corner cases:
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fit: Invalid "
                              "input data (empty dataset)");
   }
-  // Prepare all in order get the root
 
-  // - count the equal labels in the dataset
+  if (budget < 0) {
+    throw std::runtime_error(
+        "ERROR DecisionTree::fit: Invalid "
+        "input data (budget must be positive or equal to zero)");
+  }
 
-  // TODO: take a portion of the whole dataset
-
-  // - get the rows in order to build the subset
-
-  // - suggest a prediction for the root
-  // (should be done inside fitRecursively, not? If we already reach the depth
-  // limit we just stop)
-
+  // At the beginning all the features and all the rows are active
   std::vector<std::size_t> rows(dataset.size());
   std::iota(rows.begin(), rows.end(), 0);
-  std::vector<int> costs(dataset.size(), budget);
-  root_ = fitRecursively(dataset, rows, std::vector<bool>(), 1, Attacker(),
-                         costs, impurityType);
+  std::vector<std::size_t> validFeatures(dataset.getFeatureColumns().size());
+  std::iota(validFeatures.begin(), validFeatures.end(), 0);
+  // At the beginning all the costs are equal to 0.0
+  std::vector<cost_t> costs(dataset.size(), 0.0);
+  // Empty constraints at the beginning
+  std::vector<Constraint> constraints;
+  // Calculate current prediction as the default
+  prediction_t currentPrediction = dataset.getDefaultPrediction();
 
-  // ...
+  root_ = fitRecursively(dataset, rows, validFeatures, 1, Attacker(), costs,
+                         currentPrediction, impurityType, constraints);
 
-  isTrained_ = true;
+  // height_ is updated in the fitRecursively method
 }
 
-Node *DecisionTree::fitRecursively(const Dataset &dataset,
-                                   const indexes_t &rows,
-                                   const indexes_t &validFeatures,
-                                   std::size_t currHeight,
-                                   const Attacker &attacker,
-                                   const std::vector<int> &costs,
-                                   SplitOptimizer::Impurity impurityType) {
+bool DecisionTree::isTrained() const { return root_ != nullptr; }
+
+Node *DecisionTree::fitRecursively(
+    const Dataset &dataset, const indexes_t &rows,
+    const indexes_t &validFeatures, std::size_t currHeight,
+    const Attacker &attacker, const std::vector<int> &costs,
+    const prediction_t &nodePrediction, Impurity impurityType,
+    const std::vector<Constraint> &constraints) {
+
+  // As input there is a node prediction (floating point)
+  // so this function always returns a new Node
 
   if (dataset.empty() || rows.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fitRecursively: Invalid "
@@ -117,84 +97,103 @@ Node *DecisionTree::fitRecursively(const Dataset &dataset,
 
   // First base case
   if (currHeight > maxDepth_) {
-    return nullptr;
+    throw std::runtime_error("ERROR DecisionTree::fitRecursively: Invalid "
+                             "input data (currHeight must be <= maxDepth_)");
   }
 
-  // Count true and false, could lead to a base case (see below)
-  const auto &labels = dataset.getLabels();
-  std::size_t countFalse = 0;
-  std::size_t countTrue = 0;
-  for (const auto &row : rows) {
-    if (!labels[row]) {
-      countFalse++;
-    } else {
-      countTrue++;
-    }
-  }
+  // Base case: we reach the maxDepth limit
+  // TODO: base case where all the labels are on one side,
+  //  maybe this case does not exists because it a regression (fp labels)
+  Node * ret = new Node(nodePrediction);
+  // Weird passages but they are done in Python
+  ret->setNodePrediction(nodePrediction);
+  prediction_t currentPrediction = ret->getNodePrediction(); // rounded score
+  prediction_t currentPredictionScore = ret->getNodePredictionScore();
 
-  // Other base cases
+  // We recreate the optimizer at each node for concurrency reasons
+  const auto splitOptimizer = SplitOptimizer(impurityType);
+  // Calculate the current score
+  double currentScore =
+      splitOptimizer.evaluateSplit(dataset, rows, currentPredictionScore);
+  ret->setLossValue(currentScore);
+
+  // Base case
   if (currHeight == maxDepth_) {
     // Returns false if the majority of the labels is false otherwise true,
     // tie case -> false.
-    return new Node(countFalse < countTrue);
+    return ret;
   }
-  // If all the labels are already clustered do NOT do the recursive call
-  else if (!countTrue) {
-    return new Node(false);
-  } else if (!countFalse) {
-    return new Node(true);
-  }
-  // TODO: if you put the minimum number of instances per node and the instances
+
+  // TODO: Consider another base case
+  //       if you put the minimum number of instances per node and the instances
   //       falling in this node are less than this number then we have another
   //       base case (see base case 3 in parallel_robust_forest.py)
 
-  // We recreate the optimizer at each node for concurrency reasons
-  auto splitOptimizer = SplitOptimizer(impurityType);
-  // Get the best split
-  gain_t gain;
-  index_t bestSplitFeatureId;
-  feature_t bestSplitValue;
-  indexes_t rowsLeft;
-  indexes_t rowsRight;
-  // Find the best split with the optimizer
-  std::tie(gain, bestSplitFeatureId, bestSplitValue, rowsLeft, rowsRight) =
-      splitOptimizer.optimizeGain(dataset, rows, blackList, attacker, costs);
+  // Get the best split (see line 1543 of parallel_robust_forest.py)
+  gain_t bestGain = 0.0; // highest gain
+  indexes_t bestSplitLeftFeatureId,
+      bestSplitRightFeatureId; // indexes going left and right
+  index_t bestSplitFeatureId;  // best feature splitter
+  split_value_t bestSplitValue;
+  split_value_t bestNextSplitValue;
+  prediction_t bestPredLeft, bestPredRight;
+  double bestSSEuma = 0.0;
+  std::vector<Constraint> constraintsLeft, constraintsRight;
+  std::vector<cost_t> costsLeft, costsRight;
 
-  if (gain > 0.0) {
+  // Find the best split with the optimizer
+  // TODO: continue from here 23 feb 2020
+  bool optimizerSuccess = splitOptimizer.optimizeGain(
+      dataset, rows, validFeatures, attacker, costs, constraints, currentScore, currentPredictionScore,
+      bestGain, bestSplitLeftFeatureId, bestSplitRightFeatureId,
+      bestSplitFeatureId, bestSplitValue, bestNextSplitValue, bestPredLeft,
+      bestPredRight, bestSSEuma, constraintsLeft, constraintsRight, costsLeft,
+      costsRight);
+
+  if (optimizerSuccess) {
     // Build the node to be returned
-    auto toBeReturned = new Node(bestSplitFeatureId, bestSplitValue);
+    ret->setLossValue(bestSSEuma);
+    ret->setGainValue(bestGain);
+
     //
     // Prepare for the recursive step
-    // Build the blackListLeft
-    std::vector<bool> blackListDownstream(blackList);
-    if (blackListDownstream.empty()) {
-      blackListDownstream.resize(dataset.size(), false);
-    }
-    blackListDownstream[bestSplitFeatureId] = true;
-
-    // TODO: Update the costs
-    std::vector<int> costsLeft(costs);
-    costsLeft[bestSplitFeatureId] -= 10; // this must be modified
-    std::vector<int> costsRight(costs);
-    costsRight[bestSplitFeatureId] -= 10; // this must be modified
+    // Build the validFeaturesDownstream
+    const indexes_t validFeaturesDownstream = [&validFeatures,
+                                               &bestSplitFeatureId]() {
+      indexes_t ret;
+      for (const auto &f : validFeatures) {
+        if (f != bestSplitFeatureId) {
+          ret.emplace_back(f);
+        }
+      }
+      return ret;
+    }();
 
     // TODO: update constraints
     //       constraints ... maybe from the optimizeGain
 
     // Set the left node
     Node *leftNode =
-        fitRecursively(dataset, rowsLeft, blackListDownstream, currHeight + 1,
-                       attacker, costsLeft, impurityType);
-    toBeReturned->setLeft(leftNode);
+        fitRecursively(dataset, bestSplitLeftFeatureId, validFeaturesDownstream,
+                       currHeight + 1, attacker, costsLeft, bestPredLeft,
+                       impurityType, constraintsLeft);
+    ret->setLeft(leftNode);
     // Set the right node
-    Node *rightNode =
-        fitRecursively(dataset, rowsRight, blackListDownstream, currHeight + 1,
-                       attacker, costsRight, impurityType);
-    toBeReturned->setRight(rightNode);
+    Node *rightNode = fitRecursively(dataset, bestSplitRightFeatureId,
+                                     validFeaturesDownstream, currHeight + 1,
+                                     attacker, costsRight, bestPredRight,
+                                     impurityType, constraintsRight);
+    ret->setRight(rightNode);
 
-    return toBeReturned;
+    // Update the decision tree height if necessary
+    if (height_ < currHeight) {
+      height_ = currHeight;
+    }
 
-  } else {
-    return new Node(countFalse < countTrue);
   }
+
+  // TODO: set node constraint, they are used ... (where ???)
+  //  (every node has a list of constraints that is empty in most of the test cases)
+
+  return ret;
 }

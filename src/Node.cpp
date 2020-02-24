@@ -6,15 +6,15 @@
 #include "utils.h"
 
 Node::Node()
-    : prediction_(false), bestSplitFeatureId_(std::nullopt),
+    : prediction_(0.0), bestSplitFeatureId_(std::nullopt),
       bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
 
-Node::Node(bool prediction)
+Node::Node(label_t prediction)
     : prediction_(prediction), bestSplitFeatureId_(std::nullopt),
       bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
 
-Node::Node(index_t bestSplitFeatureId, feature_t bestSplitValue)
-    : prediction_(false), bestSplitFeatureId_(bestSplitFeatureId),
+Node::Node(index_t bestSplitFeatureId, generic_feature_t bestSplitValue)
+    : prediction_(0.0), bestSplitFeatureId_(bestSplitFeatureId),
       bestSplitValue_(bestSplitValue), left_(nullptr), right_(nullptr) {}
 
 Node::~Node() {
@@ -24,17 +24,37 @@ Node::~Node() {
   right_ = nullptr;
 }
 
-void Node::setLeft(Node* left) {
-  left_ = left;
+void Node::setLeft(Node *left) { left_ = left; }
+
+void Node::setRight(Node *right) { right_ = right; }
+
+void Node::setNodePrediction(prediction_t predictionScore, prediction_t threshold) {
+  predictionScore_ = predictionScore;
+  if (predictionScore < threshold) {
+    prediction_ = 0.0;
+  } else {
+    prediction_ = 1.0;
+  }
 }
 
-void Node::setRight(Node* right) {
-  right_ = right;
-}
+prediction_t Node::getNodePrediction() const { return prediction_; }
+
+prediction_t Node::getNodePredictionScore() const { return predictionScore_; }
+
+void Node::setLossValue(double value) { lossValue_ = value; }
+
+void Node::setGainValue(double value) { gainValue_ = value; }
 
 label_t Node::predict(const record_t &) const { return false; }
 
 std::string Node::stringify() const {
-  return utils::format(
-      "th = {}", bestSplitValue_.has_value() ? bestSplitValue_.value() : -1);
+  if (bestSplitValue_.has_value()) {
+    if (auto fpValue = std::get_if<fp_feature_t>(&bestSplitValue_.value())) {
+      return utils::format("th = {}", fpValue);
+    } else {
+      return utils::format("th = {}",
+                           std::get_if<ct_feature_t>(&bestSplitValue_.value()));
+    }
+  }
+  throw std::runtime_error("Cannot stringify this node");
 }

@@ -35,6 +35,8 @@ set(SOURCES
         include/Dataset.h
         include/SplitOptimizer.h
         include/Attacker.h
+        include/FeatureColumn.h
+        include/Constraint.h
 
         # Sources
         src/utils.cpp
@@ -44,7 +46,9 @@ set(SOURCES
         src/Dataset.cpp
         src/Node.cpp
         src/SplitOptimizer.cpp
-        src/Attacker.cpp)
+        src/Attacker.cpp
+        src/FeatureColumn.cpp
+        src/Constraint.cpp)
 
 # Build an object library
 add_library(treeant_lib OBJECT ${SOURCES})

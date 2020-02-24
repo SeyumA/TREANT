@@ -5,28 +5,22 @@
 #ifndef TREEANT_DECISIONTREE_H
 #define TREEANT_DECISIONTREE_H
 
+#include "types.h"
+#include "Constraint.h"
+
 #include <iosfwd>
 #include <vector>
 
-#include "Dataset.h"
-#include "SplitOptimizer.h"
-
 class Node;
+class Dataset;
+class Attacker;
 
 class DecisionTree final {
 
 public:
-  enum class VisitorConstructorTypes { GINI = 0x0 };
 
-  // Constructors
-  DecisionTree() = delete;
-
-  DecisionTree(DecisionTree &) = delete;
-
-  DecisionTree(DecisionTree &&) = delete;
-
-  explicit DecisionTree(const Dataset &dataset, const std::size_t &maxDepth,
-                        VisitorConstructorTypes visitorType);
+  // Constructor
+  explicit DecisionTree(std::size_t maxDepth);
 
   // Destructor
   ~DecisionTree();
@@ -37,21 +31,24 @@ public:
   [[nodiscard]] std::size_t getHeight() const;
 
   void fit(const Dataset &dataset, int budget,
-           SplitOptimizer::Impurity impurityType);
+           Impurity impurityType);
+
+  [[nodiscard]] bool isTrained() const;
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
 private:
-  std::size_t maxDepth_;
+  std::size_t maxDepth_ = 0;
   std::size_t height_ = 0;
   Node *root_ = nullptr;
-  bool isTrained_;
 
   Node *fitRecursively(const Dataset &dataset, const indexes_t &rows,
                        const indexes_t &validFeatures,
-                       std::size_t currHeight /*attacker, cost, ...*/,
+                       std::size_t currHeight,
                        const Attacker &attacker, const std::vector<int> &costs,
-                       SplitOptimizer::Impurity impurityType);
+                       const prediction_t& currentPrediction,
+                       Impurity impurityType,
+                       const std::vector<Constraint>& constraints);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
