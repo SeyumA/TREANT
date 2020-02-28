@@ -57,17 +57,6 @@ Dataset::Dataset(const std::string &featureFilePath) {
     throw std::runtime_error(
         "Label names are not unique, there are duplicates");
   }
-
-  // TODO: Get numerical/categorical columns types and populate
-  // featureIsNumeric_ vector
-
-  // TODO: Build a map for the categorical string -> double and use always the
-  //  same doubles for the DS columns
-  //  in this way the comparisons will work
-
-  // TODO: Populate the categorical columns at the end (the numerical are just
-  // fine)
-
   //
   // Populate the dataset
   // - resize the columns vector
