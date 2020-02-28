@@ -10,12 +10,8 @@
 class Attacker {
 
 public:
-  [[nodiscard]] std::vector<fp_feature_t>
-  attack(const std::string &featureName, const fp_feature_t &originalValue,
-         const cost_t &cost) const;
-
-  [[nodiscard]] std::vector<ct_feature_t>
-  attack(const std::string &featureName, const ct_feature_t &originalValue,
+  [[nodiscard]] std::vector<feature_t>
+  attack(const std::string &featureName, const feature_t &originalValue,
          const cost_t &cost) const;
 
 private:
@@ -23,6 +19,9 @@ private:
   class AttackerRule {
 
     // TODO: 24 feb 2020 continue with the attacker rule
+
+  private:
+//    std::map<std::tuple<>>
 
   };
 

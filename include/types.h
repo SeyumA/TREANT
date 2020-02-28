@@ -25,15 +25,13 @@ using bool_feature_t = bool;
 using int_feature_t = std::int32_t;
 using double_feature_t = double;
 
-using fp_feature_t = double;
-using ct_feature_t = std::string;
-using generic_feature_t = std::variant<fp_feature_t, ct_feature_t>;
+using feature_t = double;
 using y_hat_t = double;
 using split_value_t = double;
 using prediction_t = label_t;
 
 // The record_t must contain all the possible kind of feature types.
-using record_t = std::vector<generic_feature_t>;
+using record_t = std::vector<feature_t>;
 
 // There must be a one to one correspondence between feature types
 // and feature vectors.

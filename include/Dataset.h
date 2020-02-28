@@ -10,11 +10,10 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <set>
+#include <map>
 
 #include "types.h"
 #include "DecisionTree.h"
-#include "FeatureColumn.h"
 
 /**
  * The FeatureTypes enum must be consistent with feature_t
@@ -29,14 +28,14 @@ public:
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  [[nodiscard]] const std::vector<FeatureColumn> &getFeatureColumns() const;
+  [[nodiscard]] const std::vector<std::vector<feature_t>> &getFeatureColumns() const;
 
-  [[nodiscard]] const FeatureColumn &getFeatureColumn(index_t i) const;
+  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
 
   [[nodiscard]] std::string getFeatureName(index_t i) const;
 
-  [[nodiscard]] std::pair<label_t, frequency_t>
-  getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
+//  [[nodiscard]] std::pair<label_t, frequency_t>
+//  getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
 
   [[nodiscard]] bool empty() const { return labelVector_.empty(); }
 
@@ -48,7 +47,12 @@ public:
 
 private:
   std::vector<std::string> featureNames_;
-  std::vector<FeatureColumn> featureColumns_;
+  std::vector<bool> featureIsNumeric_;
+
+  std::map<std::string, feature_t> categoricalToDouble_;
+  std::map<feature_t, std::string> categoricalToDoubleReversed_;
+
+  std::vector<std::vector<feature_t>> featureColumns_;
   std::vector<label_t> labelVector_;
 };
 

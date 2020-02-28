@@ -6,12 +6,14 @@
 
 #include <fstream>
 #include <iomanip>
+#include <set>
 #include <sstream>
 #include <utility>
 
 #include "utils.h"
 
 Dataset::Dataset(const std::string &featureFilePath) {
+
   std::ifstream ifs;
   ifs.open(featureFilePath);
   if (!ifs.is_open() || !ifs.good()) {
@@ -48,13 +50,72 @@ Dataset::Dataset(const std::string &featureFilePath) {
     throw std::runtime_error("Cannot find 'LABEL' in the first line (there "
                              "must be a column of labels");
   }
+  // Check for duplicates
+  if (featureNames_.size() !=
+      std::set<std::string>(featureNames_.begin(), featureNames_.end())
+          .size()) {
+    throw std::runtime_error(
+        "Label names are not unique, there are duplicates");
+  }
+
+  // TODO: Get numerical/categorical columns types and populate
+  // featureIsNumeric_ vector
+
+  // TODO: Build a map for the categorical string -> double and use always the
+  //  same doubles for the DS columns
+  //  in this way the comparisons will work
+
+  // TODO: Populate the categorical columns at the end (the numerical are just
+  // fine)
+
   //
   // Populate the dataset
   // - resize the columns vector
   featureColumns_.resize(featureNames_.size());
+  featureIsNumeric_.resize(featureNames_.size());
+  std::size_t columnLimit = featureColumns_.size() + 1;
   // - initialize the counter of lines (the first line is already read
   std::size_t countLines = 1;
-  std::size_t columnLimit = featureColumns_.size() + 1;
+
+  feature_t mapValue = 0.0;
+  std::map<std::string, feature_t> categoricalToDouble;
+  const auto getDoubleFromToken =
+      [&mapValue, &categoricalToDouble](const std::string &token) {
+        try {
+          return std::make_pair(std::stod(token), true);
+        } catch (std::exception &) {
+          const auto [iter, isInserted] =
+              categoricalToDouble.insert({token, mapValue});
+          if (isInserted) {
+            mapValue++;
+          }
+          return std::make_pair(iter->second, false);
+        }
+      };
+  //
+  // Build the map of categorical entries and find out which are numerical
+  if (std::getline(ifs, line)) {
+    countLines++;
+    std::istringstream is(line);
+    std::string token;
+    index_t j = 0;
+    while (std::getline(is, token, lineDelimiter)) {
+      if (!token.empty()) {
+        const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
+        featureColumns_[j].push_back(valueToInsert);
+        featureIsNumeric_[j] = isNumerical;
+        j++;
+      }
+    }
+    if (j != columnLimit) {
+      throw std::runtime_error(
+          utils::format("One missing feature at line {}", countLines));
+    }
+  } else {
+    throw std::runtime_error("Cannot find second line after the header line");
+  }
+
+  // Build the rest of the database
   while (std::getline(ifs, line)) {
     countLines++;
     std::istringstream is(line);
@@ -83,11 +144,23 @@ Dataset::Dataset(const std::string &featureFilePath) {
                               countLines));
           }
         } else { // Case where we are reading a feature
-          featureColumns_[jj].addElement(token);
+          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
+          if (isNumerical != featureIsNumeric_[j]) {
+            const std::string type =
+                featureIsNumeric_[j] ? "numerical" : "categorical";
+            throw std::runtime_error(utils::format(
+                "The feature '{}' at line {} is supposed to be {} but it s not",
+                token, type));
+          }
+          featureColumns_[jj].push_back(valueToInsert);
           jj++;
         }
         j++; // always update this index if a token is not empty
       }
+    }
+    if (j != columnLimit) {
+      throw std::runtime_error(
+          utils::format("One missing feature at line {}", countLines));
     }
   }
   // Close the file stream
@@ -106,38 +179,47 @@ Dataset::Dataset(const std::string &featureFilePath) {
   if (countLines == 1 || featureColumns_[0].empty() || labelVector_.empty()) {
     throw std::runtime_error("Cannot build an empty dataset (invalid file)");
   }
+  // Update the maps
+  categoricalToDouble_ = std::move(categoricalToDouble);
+  for (const auto &[s, d] : categoricalToDouble_) {
+    const auto [iter, isInserted] = categoricalToDoubleReversed_.insert({d, s});
+    if (!isInserted) {
+      throw std::runtime_error("Duplicate value in categoricalToDouble map, "
+                               "the map must be a bijective function");
+    }
+  }
 }
 
-std::pair<label_t, frequency_t>
-Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const {
-  std::map<label_t, frequency_t> labelToFrequency;
-  // WARNING: Always work on the subset!
-  for (const auto &index : validIndexes) {
-    const auto &label = labelVector_[index];
-    if (labelToFrequency.find(label) == labelToFrequency.end()) {
-      labelToFrequency[label] = 1;
-    } else {
-      labelToFrequency[label] += 1;
-    }
-  }
-  auto mostFrequentLabel = labelToFrequency.begin()->first;
-  auto freq = labelToFrequency.begin()->second;
-  for (const auto &[la, fr] : labelToFrequency) {
-    if (fr > freq) {
-      mostFrequentLabel = la;
-      freq = fr;
-    }
-  }
-  return std::make_pair(mostFrequentLabel, freq);
-}
+//std::pair<label_t, frequency_t>
+//Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const {
+//  std::map<label_t, frequency_t> labelToFrequency;
+//  // WARNING: Always work on the subset!
+//  for (const auto &index : validIndexes) {
+//    const auto &label = labelVector_[index];
+//    if (labelToFrequency.find(label) == labelToFrequency.end()) {
+//      labelToFrequency[label] = 1;
+//    } else {
+//      labelToFrequency[label] += 1;
+//    }
+//  }
+//  auto mostFrequentLabel = labelToFrequency.begin()->first;
+//  auto freq = labelToFrequency.begin()->second;
+//  for (const auto &[la, fr] : labelToFrequency) {
+//    if (fr > freq) {
+//      mostFrequentLabel = la;
+//      freq = fr;
+//    }
+//  }
+//  return std::make_pair(mostFrequentLabel, freq);
+//}
 
 const std::vector<label_t> &Dataset::getLabels() const { return labelVector_; }
 
-const std::vector<FeatureColumn> &Dataset::getFeatureColumns() const {
+const std::vector<std::vector<feature_t>> &Dataset::getFeatureColumns() const {
   return featureColumns_;
 }
 
-const FeatureColumn &Dataset::getFeatureColumn(index_t i) const {
+const std::vector<feature_t> &Dataset::getFeatureColumn(index_t i) const {
   return featureColumns_[i];
 }
 
@@ -159,13 +241,13 @@ std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
   // Print the features
   for (std::size_t i = 0; i < ds.size(); i++) {
     os << std::setw(indexWidth) << std::left << i;
-    for (const auto &col : ds.featureColumns_) {
-      if (col.isNumerical()) {
-        os << std::fixed << std::setw(doubleWidth) << std::left
-           << col.getFpFeature(i);
+    for (index_t j = 0; j < ds.featureColumns_.size(); j++) {
+      const auto &col = ds.featureColumns_[j];
+      if (ds.featureIsNumeric_[j]) {
+        os << std::fixed << std::setw(doubleWidth) << std::left << col[i];
       } else {
         os << std::fixed << std::setw(doubleWidth) << std::left
-           << col.getCtFeature(i);
+           << ds.categoricalToDoubleReversed_.at(col[i]);
       }
     }
     os << "|\t" << ds.labelVector_[i] << std::endl;
