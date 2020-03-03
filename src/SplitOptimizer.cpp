@@ -2,9 +2,19 @@
 // Created by dg on 14/01/20.
 //
 
-#include "SplitOptimizer.h"
 #include <cassert>
+#include <set>
+#include <memory>
 #include <stdexcept>
+
+#include "SplitOptimizer.h"
+
+// NLOPT test
+#include <cmath>
+#include <nlopt.hpp>
+// TODO: delete this include (only for debug purposes)
+#include <iomanip>
+#include <iostream>
 
 SplitOptimizer::SplitOptimizer(Impurity impurityType) {
 
@@ -40,11 +50,10 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
                                    const indexes_t &validInstances,
                                    const Attacker &attacker,
                                    const std::vector<cost_t> &costs,
-                                   const generic_feature_t &splittingValue,
+                                   const feature_t &splittingValue,
                                    const index_t &splittingFeature,
                                    // outputs
-                                   indexes_t &leftSplit,
-                                   indexes_t &rightSplit,
+                                   indexes_t &leftSplit, indexes_t &rightSplit,
                                    indexes_t &unknownSplit) const {
 
   // Prepare the output
@@ -53,16 +62,10 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
         "ERROR in simulateSplit: all outputs must be empty at the beginning");
   }
 
-  bool isNumerical = dataset.getFeatureColumn(splittingFeature).isNumerical();
-  const auto vPtrAsFp = std::get_if<fp_feature_t>(&splittingValue);
-  const auto vPtrAsCt = std::get_if<ct_feature_t>(&splittingValue);
+  bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
+  const auto &featureColumn = dataset.getFeatureColumn(splittingFeature);
 
-  if (!( (isNumerical && vPtrAsFp) || (!isNumerical && vPtrAsCt) )) {
-    throw std::runtime_error(
-        "ERROR in simulateSplit: splittingValue NOT consistent");
-  }
-
-  for (const auto& i : validInstances) {
+  for (const auto &i : validInstances) {
     const auto cost = costs[i];
     // The attack on a specific instance 'i' to its feature 'splittingFeature'
     // generates a set of new feature,
@@ -73,11 +76,21 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
     bool allRight = true;
 
     const std::string featureName = dataset.getFeatureName(splittingFeature);
-    if (isNumerical) {
-      const fp_feature_t v = std::get<fp_feature_t>(splittingValue);
-      std::vector<fp_feature_t> attacks = attacker.attack(featureName, v, cost);
-      for (const auto& atk : attacks) {
-        if (atk <= v) {
+    const auto attackedFeatureValue = featureColumn[i];
+    std::vector<feature_t> attacks =
+        attacker.attack(featureName, attackedFeatureValue, cost);
+    for (const auto &atk : attacks) {
+      if (isNumerical) {
+        if (atk <= splittingValue) {
+          allRight = false;
+        } else {
+          allLeft = false;
+        }
+        if (!allLeft && !allRight) {
+          break;
+        }
+      } else {
+        if (atk == splittingValue) {
           allRight = false;
         } else {
           allLeft = false;
@@ -86,20 +99,7 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
           break;
         }
       }
-    } else {
-      const ct_feature_t v = std::get<ct_feature_t>(splittingValue);
-      std::vector<ct_feature_t> attacks = attacker.attack(featureName, v, cost);
-      for (const auto& atk : attacks) {
-        if (atk == v) {
-          allRight = false;
-        } else {
-          allLeft = false;
-        }
-        if (!allLeft && !allRight) {
-          break;
-        }
-      }
-    } // end if isNumerical
+    }
     // Modify the output vectors accordingly
     if (allLeft) {
       leftSplit.push_back(i);
@@ -111,17 +111,142 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
   } // end of loop over instances
 }
 
-bool SplitOptimizer::optimizeSSE(const Dataset &dataset,
-                                 const indexes_t &validInstances,
+// Start Nlopt library test
+typedef struct {
+  double a, b;
+} my_constraint_data;
+
+struct ExtraData {
+  explicit ExtraData(const std::vector<label_t> &y,
+                     const indexes_t &leftIndexes,
+                     const indexes_t &rightIndexes,
+                     const indexes_t &unknownIndexes)
+      : y_(y), leftIndexes_(leftIndexes), rightIndexes_(rightIndexes),
+        unknownIndexes_(unknownIndexes) {}
+  const std::vector<label_t> &y_;
+  const indexes_t &leftIndexes_;
+  const indexes_t &rightIndexes_;
+  const indexes_t &unknownIndexes_;
+};
+
+int count = 0;
+
+double myvfunc(const std::vector<double> &x, std::vector<double> &grad,
+               void *my_func_data) {
+
+  static const auto updateRetAndGrad =
+      [&grad](const double &diff, const index_t &gradIndex, double &ret) {
+        if (!grad.empty()) {
+          grad[gradIndex] = 2.0 * diff;
+        }
+        ret += diff * diff;
+      };
+
+  // Cast the extra data
+  const auto *d = reinterpret_cast<ExtraData *>(my_func_data);
+  const auto leftIndexesPtr = d->leftIndexes_.data();
+  // Update the iteration count
+  ++count;
+  std::cout << "iteration number " << count << std::endl;
+  // Initialize the returning value
+  const auto &y = d->y_;
+  double ret = 0.0;
+  double sumDiff0 = 0.0;
+  double sumDiff1 = 0.0;
+  // Working on the left indexes
+  for (const auto &leftIndex : d->leftIndexes_) {
+    const double diff = x[0] - y[leftIndex];
+    sumDiff0 += diff;
+    ret += diff * diff;
+  }
+  // Working on the right indexes
+  int i = 0;
+  for (const auto &rightIndex : d->rightIndexes_) {
+    const double diff = x[1] - y[rightIndex];
+    sumDiff1 += diff;
+    ret += diff * diff;
+  }
+  // Working on the unknown indexes
+  for (const auto &unknownIndex : d->unknownIndexes_) {
+    const double diffLeft = x[0] - y[unknownIndex];
+    const double diffLeftAbs = diffLeft < 0.0 ? -diffLeft : diffLeft;
+    const double diffRight = y[unknownIndex] - x[1];
+    const double diffRightAbs = diffRight < 0.0 ? -diffRight : diffRight;
+    const double diff = diffLeftAbs > diffRightAbs ? diffLeft : diffRight;
+    // diff is maximum possible difference, i.e. the difference between:
+    // |y[unknownIndex] - leftPred| and |y[unknownIndex] - rightPred|
+    if (diffLeftAbs > diffRightAbs) {
+      sumDiff0 += diff;
+    } else {
+      sumDiff1 += diff;
+    }
+    ret += diff * diff;
+  }
+
+  // Update the gradient
+  if (!grad.empty()) {
+    grad[0] = 2.0 * sumDiff0;
+    grad[1] = 2.0 * sumDiff1;
+  }
+
+  //
+  return ret;
+}
+
+//double myvconstraint(const std::vector<double> &x, std::vector<double> &grad,
+//                     void *data) {
+//  auto *d = reinterpret_cast<my_constraint_data *>(data);
+//  double a = d->a, b = d->b;
+//  if (!grad.empty()) {
+//    grad[0] = 3 * a * (a * x[0] + b) * (a * x[0] + b);
+//    grad[1] = -1.0;
+//  }
+//  return ((a * x[0] + b) * (a * x[0] + b) * (a * x[0] + b) - x[1]);
+//}
+
+// NLOPT test end
+
+bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
                                  const indexes_t &leftSplit,
                                  const indexes_t &rightSplit,
                                  const indexes_t &unknownSplit,
-                                 double &yHatLeft, double &yHatRight,
-                                 double &sse) const {
+                                 label_t &yHatLeft, label_t &yHatRight,
+                                 gain_t &sse) const {
 
   // TODO implement this also with static
   //     Use the external library
-  throw std::runtime_error("optimizeSSE is not implemented");
+
+  // The dimension of the problem is 2: we are finding yHatLeft and yHatRight
+  nlopt::opt opt(nlopt::LD_SLSQP, 2);
+  const auto extraDataPtr = std::make_shared<ExtraData>(y, leftSplit, rightSplit, unknownSplit);
+  // TODO: myvfunc must be a static function of SplitOptimizer
+  opt.set_min_objective(myvfunc, extraDataPtr.get());
+  // Set the tolerance
+  opt.set_xtol_rel(1e-4);
+  // Initialize the x vector
+  std::vector<feature_t> x = {yHatLeft, yHatRight};
+
+  double minf = 0.0;
+
+  try {
+    nlopt::result result = opt.optimize(x, minf);
+    if (result < nlopt::result::SUCCESS) {
+      std::cout << "The result is not SUCCESS";
+      return false;
+    } else {
+      printf("found minimum after %d evaluations\n", count);
+      std::cout << "found minimum at f(" << x[0] << "," << x[1]
+                << ") = " << std::setprecision(10) << minf << std::endl;
+      // Update the outputs
+      yHatLeft = x[0];
+      yHatRight = x[1];
+      sse = minf;
+      return true;
+    }
+  } catch (std::exception &e) {
+    std::cout << "nlopt failed: " << e.what() << std::endl;
+    return false;
+  }
 }
 
 bool SplitOptimizer::optimizeGain(
@@ -151,10 +276,10 @@ bool SplitOptimizer::optimizeGain(
   for (const auto &splittingFeature : validFeatures) {
 
     // Build a set of unique feature values
-    // TODO: Could be cached but optimizeGain is called only once in
-    // fitRecursively
-    const auto currentColumn = dataset.getFeatureColumn(splittingFeature);
-    const auto uniqueFeatureValues = currentColumn.getUniqueValues();
+    // TODO: uniqueFeatureValues Could be cached
+    const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
+    const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
+                                                  currentColumn.end());
 
     for (const auto &splittingValue : uniqueFeatureValues) {
       // Take the candidate splitting value among the valid instances
@@ -169,10 +294,11 @@ bool SplitOptimizer::optimizeGain(
       // TODO: propagate the constraints (see lines 1177-1190)
       //
 
-      double yHatLeft, yHatRight, sse;
-      bool optSuccess =
-          optimizeSSE(dataset, validInstances, leftSplit, rightSplit,
-                      unknownSplit, yHatLeft, yHatRight, sse);
+      feature_t yHatLeft = currentPredictionScore;
+      feature_t yHatRight = currentPredictionScore;
+      feature_t sse = 0.0;
+      bool optSuccess = optimizeSSE(dataset.getLabels(), leftSplit, rightSplit,
+                                    unknownSplit, yHatLeft, yHatRight, sse);
 
       if (optSuccess) {
         const double currGain = currentScore - sse;

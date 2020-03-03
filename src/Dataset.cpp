@@ -90,9 +90,13 @@ Dataset::Dataset(const std::string &featureFilePath) {
     index_t j = 0;
     while (std::getline(is, token, lineDelimiter)) {
       if (!token.empty()) {
-        const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
-        featureColumns_[j].push_back(valueToInsert);
-        featureIsNumeric_[j] = isNumerical;
+        if (j == labelPos) {
+          labelVector_.push_back(std::stod(token));
+        } else {
+          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
+          featureColumns_[j].push_back(valueToInsert);
+          featureIsNumeric_[j] = isNumerical;
+        }
         j++;
       }
     }
@@ -171,8 +175,8 @@ Dataset::Dataset(const std::string &featureFilePath) {
   // Update the maps
   categoricalToDouble_ = std::move(categoricalToDouble);
   for (const auto &[s, d] : categoricalToDouble_) {
-    const auto [iter, isInserted] = categoricalToDoubleReversed_.insert({d, s});
-    if (!isInserted) {
+    const auto iterIsInserted = categoricalToDoubleReversed_.insert({d, s});
+    if (!iterIsInserted.second) {
       throw std::runtime_error("Duplicate value in categoricalToDouble map, "
                                "the map must be a bijective function");
     }
@@ -210,6 +214,10 @@ const std::vector<std::vector<feature_t>> &Dataset::getFeatureColumns() const {
 
 const std::vector<feature_t> &Dataset::getFeatureColumn(index_t i) const {
   return featureColumns_[i];
+}
+
+bool Dataset::isFeatureNumerical(index_t j) const {
+  return featureIsNumeric_[j];
 }
 
 std::string Dataset::getFeatureName(index_t i) const {

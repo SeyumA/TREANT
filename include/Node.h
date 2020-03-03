@@ -15,7 +15,7 @@ class Node {
 public:
   Node();
   explicit Node(label_t prediction);
-  explicit Node(index_t bestSplitFeatureId, generic_feature_t bestSplitValue);
+  explicit Node(index_t bestSplitFeatureId, feature_t bestSplitValue);
   ~Node();
 
   void setLeft(Node* left);
@@ -35,8 +35,8 @@ private:
   prediction_t predictionScore_;  // floating point
   double lossValue_;
   gain_t gainValue_;
-  std::optional<std::size_t> bestSplitFeatureId_;
-  std::optional<generic_feature_t> bestSplitValue_;
+  std::optional<index_t> bestSplitFeatureId_;
+  std::optional<feature_t> bestSplitValue_;
   Node *left_ = nullptr;
   Node *right_ = nullptr;
 

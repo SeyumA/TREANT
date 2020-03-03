@@ -56,29 +56,4 @@ namespace utils {
         return res;
     }
 
-    std::pair<Node *, std::size_t>
-    buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
-                     const std::size_t &currDepth,
-                     IFeatureVectorVisitor *visitor
-            //, attacker,
-            // cost,
-            // nodePrediction,
-            // featureBlackList,
-            // constraints
-            // ...
-    ) {
-
-        // Consider all base cases
-        // - maxDepth reached
-        // - all has the same label
-        // - ...
-
-        // build the node prediction as mean(dataset.y)
-        Node * root = nullptr; // buildRecursively should be called here
-
-        //
-
-        return std::make_pair(root, 0);
-    }
-
 } // end of utils namespace

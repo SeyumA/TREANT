@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project (treeant)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
 enable_testing()
 
 IF (NOT WIN32)
@@ -14,7 +16,7 @@ set(CMAKE_CXX_STANDARD 17)
 IF (WIN32)
     set(CMAKE_CXX_FLAGS "/Zi /EHsc /MP /Wall /W4")
 ELSE ()
-    SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -pthread -fPIC -march=native")
+    SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -pthread -fPIC -march=native -lm")
     SET(CMAKE_CXX_FLAGS_RELEASE "-Werror -O3 -s")
     SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 ENDIF ()
@@ -35,7 +37,6 @@ set(SOURCES
         include/Dataset.h
         include/SplitOptimizer.h
         include/Attacker.h
-        include/FeatureColumn.h
         include/Constraint.h
 
         # Sources
@@ -47,21 +48,24 @@ set(SOURCES
         src/Node.cpp
         src/SplitOptimizer.cpp
         src/Attacker.cpp
-        src/FeatureColumn.cpp
         src/Constraint.cpp)
 
-# Build an object library
-add_library(treeant_lib OBJECT ${SOURCES})
 
 # Build the executable in the main
-add_executable(${CMAKE_PROJECT_NAME} main.cpp $<TARGET_OBJECTS:treeant_lib>)
+add_executable(${CMAKE_PROJECT_NAME} main.cpp ${SOURCES})
 
-# Add tests
-add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
-add_test(NAME test_opt_parser COMMAND test_opt_parser)
+include(FindPkgConfig)
+find_package(Nlopt REQUIRED)
+include_directories(${NLOPT_INCLUDE_DIR})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${NLOPT_LIBRARY})
 
-add_executable(test_decision_tree tests/test_decision_tree.cpp $<TARGET_OBJECTS:treeant_lib>)
-add_test(NAME test_decision_tree COMMAND test_decision_tree)
 
-add_executable(test_utils_format tests/test_utils_format.cpp $<TARGET_OBJECTS:treeant_lib>)
-add_test(NAME test_utils_format COMMAND test_utils_format)
+## Add tests
+#add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
+#add_test(NAME test_opt_parser COMMAND test_opt_parser)
+#
+#add_executable(test_decision_tree tests/test_decision_tree.cpp $<TARGET_OBJECTS:treeant_lib>)
+#add_test(NAME test_decision_tree COMMAND test_decision_tree)
+#
+#add_executable(test_utils_format tests/test_utils_format.cpp $<TARGET_OBJECTS:treeant_lib>)
+#add_test(NAME test_utils_format COMMAND test_utils_format)

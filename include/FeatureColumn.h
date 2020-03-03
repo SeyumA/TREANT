@@ -12,13 +12,13 @@
 
 class FeatureColumn {
 
+    using fp_feature_t = double;
+    using ct_feature_t = std::string;
+    using generic_feature_t = std::variant<fp_feature_t, ct_feature_t >;
+
 public:
   void addElement(const std::string&);
   [[nodiscard]] bool isNumerical() const;
-  [[nodiscard]] fp_feature_t getFpFeature(std::size_t i) const;
-  [[nodiscard]] ct_feature_t getCtFeature(std::size_t i) const;
-  //
-  [[nodiscard]] std::set<generic_feature_t> getUniqueValues() const;
   //
   [[nodiscard]] bool empty() const;
   [[nodiscard]] std::size_t size() const;

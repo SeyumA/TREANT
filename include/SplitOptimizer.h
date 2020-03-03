@@ -50,17 +50,19 @@ private:
   // (see __optimize_sse_under_max_attack in the python code
   // It returns y_pred_left, y_pred_right, sse_uma
   [[nodiscard]] bool
-  optimizeSSE(const Dataset &dataset, const indexes_t &validInstances,
-              const indexes_t &leftSplit, const indexes_t &rightSplit,
-              const indexes_t &unknownSplit, double &yHatLeft,
-              double &yHatRight, double &sse
+  optimizeSSE(const std::vector<label_t> &y,
+              const indexes_t &leftSplit,
+              const indexes_t &rightSplit,
+              const indexes_t &unknownSplit,
+              label_t &yHatLeft, label_t &yHatRight,
+              gain_t &sse
               /*TODO: lossFunction, constraints*/) const;
 
   // Returns left, unknown, right
   // TODO: this code can go easily a method in the FeatureColumn class
   void simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
                      const Attacker &attacker, const std::vector<cost_t> &costs,
-                     const generic_feature_t &splittingValue,
+                     const feature_t &splittingValue,
                      const index_t &splittingFeature, indexes_t &leftSplit,
                      indexes_t &rightSplit, indexes_t &unknownSplit) const;
 };

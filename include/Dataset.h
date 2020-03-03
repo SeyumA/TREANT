@@ -32,6 +32,8 @@ public:
 
   [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
 
+  [[nodiscard]] bool isFeatureNumerical(index_t j) const;
+
   [[nodiscard]] std::string getFeatureName(index_t i) const;
 
 //  [[nodiscard]] std::pair<label_t, frequency_t>

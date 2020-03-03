@@ -13,7 +13,7 @@ Node::Node(label_t prediction)
     : prediction_(prediction), bestSplitFeatureId_(std::nullopt),
       bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
 
-Node::Node(index_t bestSplitFeatureId, generic_feature_t bestSplitValue)
+Node::Node(index_t bestSplitFeatureId, feature_t bestSplitValue)
     : prediction_(0.0), bestSplitFeatureId_(bestSplitFeatureId),
       bestSplitValue_(bestSplitValue), left_(nullptr), right_(nullptr) {}
 
@@ -49,12 +49,7 @@ label_t Node::predict(const record_t &) const { return false; }
 
 std::string Node::stringify() const {
   if (bestSplitValue_.has_value()) {
-    if (auto fpValue = std::get_if<fp_feature_t>(&bestSplitValue_.value())) {
-      return utils::format("th = {}", fpValue);
-    } else {
-      return utils::format("th = {}",
-                           std::get_if<ct_feature_t>(&bestSplitValue_.value()));
-    }
+      return utils::format("th = {}", bestSplitValue_.value());
   }
   throw std::runtime_error("Cannot stringify this node");
 }

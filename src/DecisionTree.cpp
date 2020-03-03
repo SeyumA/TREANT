@@ -107,7 +107,7 @@ Node *DecisionTree::fitRecursively(
   Node * ret = new Node(nodePrediction);
   // Weird passages but they are done in Python
   ret->setNodePrediction(nodePrediction);
-  prediction_t currentPrediction = ret->getNodePrediction(); // rounded score
+//  prediction_t currentPrediction = ret->getNodePrediction(); // rounded score
   prediction_t currentPredictionScore = ret->getNodePredictionScore();
 
   // We recreate the optimizer at each node for concurrency reasons
