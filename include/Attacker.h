@@ -10,8 +10,8 @@
 class Attacker {
 
 public:
-  [[nodiscard]] std::vector<feature_t>
-  attack(const std::string &featureName, const feature_t &originalValue,
+  [[nodiscard]] std::vector<std::pair<record_t, cost_t>>
+  attack(const record_t &x, const feature_t &featureId,
          const cost_t &cost) const;
 
 private:

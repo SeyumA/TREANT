@@ -4,10 +4,12 @@
 
 #include "Attacker.h"
 
-std::vector<feature_t> Attacker::attack(const std::string &featureName,
-                                        const feature_t &originalValue,
-                                        const cost_t &cost) const {
+std::vector<std::pair<record_t, cost_t>>
+Attacker::attack(const record_t &instance, const feature_t &featureId,
+                 const cost_t &cost) const {
 
   // TODO: you must implement this, now is equal to have budget = 0
-  return std::vector<feature_t>(1, originalValue);
+  std::vector<std::pair<record_t, cost_t>> ret = {
+      std::make_pair(instance, 0.0)};
+  return ret;
 }

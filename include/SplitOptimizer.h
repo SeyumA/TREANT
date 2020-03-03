@@ -27,8 +27,8 @@ public:
                const std::vector<Constraint> &constraints,
                const double &currentScore, const double &currentPredictionScore,
                // outputs
-               gain_t &bestGain, indexes_t &bestSplitLeftFeatureId,
-               indexes_t &bestSplitRightFeatureId, index_t &bestSplitFeatureId,
+               gain_t &bestGain, indexes_t &bestSplitLeft,
+               indexes_t &bestSplitRight, index_t &bestSplitFeatureId,
                split_value_t &bestSplitValue, split_value_t &bestNextSplitValue,
                prediction_t &bestPredLeft, prediction_t &bestPredRight,
                double &bestSSEuma, std::vector<Constraint> &constraintsLeft,
@@ -50,12 +50,10 @@ private:
   // (see __optimize_sse_under_max_attack in the python code
   // It returns y_pred_left, y_pred_right, sse_uma
   [[nodiscard]] bool
-  optimizeSSE(const std::vector<label_t> &y,
-              const indexes_t &leftSplit,
-              const indexes_t &rightSplit,
-              const indexes_t &unknownSplit,
-              label_t &yHatLeft, label_t &yHatRight,
-              gain_t &sse
+  optimizeSSE(const std::vector<label_t> &y, const indexes_t &leftSplit,
+              const indexes_t &rightSplit, const indexes_t &unknownSplit,
+              const std::vector<Constraint>& constraints,
+              label_t &yHatLeft, label_t &yHatRight, gain_t &sse
               /*TODO: lossFunction, constraints*/) const;
 
   // Returns left, unknown, right
@@ -65,6 +63,23 @@ private:
                      const feature_t &splittingValue,
                      const index_t &splittingFeature, indexes_t &leftSplit,
                      indexes_t &rightSplit, indexes_t &unknownSplit) const;
+
+  // Move the implementation to SplitOptimizer.cpp
+  struct ExtraData {
+    explicit ExtraData(const std::vector<label_t> &y,
+                       const indexes_t &leftIndexes,
+                       const indexes_t &rightIndexes,
+                       const indexes_t &unknownIndexes);
+
+    const std::vector<label_t> &y_;
+    const indexes_t &leftIndexes_;
+    const indexes_t &rightIndexes_;
+    const indexes_t &unknownIndexes_;
+    std::size_t count_;
+  };
+
+  static double sseCostFunction(const std::vector<double> &x,
+                                std::vector<double> &grad, void *my_func_data);
 };
 
 #endif // TREEANT_SPLITOPTIMIZER_H

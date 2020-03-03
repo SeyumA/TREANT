@@ -259,3 +259,11 @@ prediction_t Dataset::getDefaultPrediction() const {
   }
   return prediction / (prediction_t)labelVector_.size();
 }
+
+record_t Dataset::getRecord(index_t i) const {
+  record_t ret(featureColumns_.size());
+  for (std::size_t j = 0; featureColumns_.size(); j++) {
+    ret[j] = (featureColumns_[j])[i];
+  }
+  return ret;
+}
