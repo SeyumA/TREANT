@@ -76,7 +76,7 @@ void SplitOptimizer::simulateSplit(
     const std::string featureName = dataset.getFeatureName(splittingFeature);
     const auto attackedFeatureValue = featureColumn[i];
     const auto attacks =
-        attacker.attack(dataset.getRecord(i), attackedFeatureValue, cost);
+        attacker.attack(dataset.getRecord(i));
     for (const auto &atk : attacks) {
       if (isNumerical) {
         if (atk.first[splittingFeature] <= splittingValue) {

@@ -6,51 +6,46 @@
 #include "Dataset.h"
 #include "nlohmann/json.hpp"
 #include "utils.h"
+
 #include <fstream>
+#include <queue>
 // TODO: delete this iostream after debugging
 #include <iostream>
 #include <stack>
 
 // AttackerRule ----------------------------------------------------------------
-Attacker::AttackerRule::AttackerRule(
-    std::pair<index_t, std::set<feature_t>> pre,
-    std::pair<index_t, feature_t> post, cost_t cost, bool isNumerical)
-    : pre_(std::move(pre)), post_(std::move(post)), cost_(cost),
-      isNumerical_(isNumerical) {
+Attacker::AttackerRule::AttackerRule(index_t featureIndexToAttack,
+                                     std::set<feature_t> pre, feature_t post,
+                                     cost_t cost, bool isNumerical)
+    : featureIndexToAttack_(featureIndexToAttack), pre_(std::move(pre)),
+      post_(std::move(post)), cost_(cost), isNumerical_(isNumerical) {
+
   // Perform some checks
-  if (!(isNumerical && pre.second.size() != 2 &&
-        *(pre.second.begin()) <= *(std::next(pre.second.begin())))) {
+  // Does not make sense have an AttackerRule with an empty 'pre' set.
+  if (pre.empty()) {
+    throw std::runtime_error("The attacker rule must have some values in the "
+                             "'pre' set otherwise is useless");
+  }
+  // The 'pre' must contain only two values in ascending order if numerical
+  if (!(isNumerical && pre.size() != 2 &&
+        *(pre.begin()) <= *(std::next(pre.begin())))) {
     throw std::runtime_error(
         "The attacker rule referring to a numerical "
         "feature must have two components in the 'pre' "
         "set and the first one must be <= to the second one");
   }
-  // Does not make sense have an AttackerRule with an empty 'pre' set.
-  if (pre.second.empty()) {
-    throw std::runtime_error("The attacker rule must have some values in the "
-                             "'pre' set otherwise is useless");
-  }
 }
 
 index_t Attacker::AttackerRule::getTargetFeatureIndex() const {
-  return pre_.first;
-}
-
-bool Attacker::AttackerRule::isApplicable(const index_t &featureId,
-                                          const feature_t &featureValue) const {
-
-  return (isNumerical_ && pre_.first == featureId &&
-          featureValue >= *(pre_.second.begin()) &&
-          featureValue <= *(std::next(pre_.second.begin()))) ||
-         (!isNumerical_ && pre_.second.find(featureValue) != pre_.second.end());
+  return featureIndexToAttack_;
 }
 
 record_t Attacker::AttackerRule::apply(const record_t &instance) const {
   auto ret = record_t(instance);
   if (isNumerical_) {
-    ret[post_.first] += post_.second;
+    ret[featureIndexToAttack_] += post_;
   } else {
-    ret[post_.first] = post_.second;
+    ret[featureIndexToAttack_] = post_;
   }
   return ret;
 }
@@ -62,7 +57,7 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
                    const cost_t &budget)
     : budget_(budget) {
 
-  const nlohmann::json attackerDefinition = [&json](){
+  const nlohmann::json attackerDefinition = [&json]() {
     std::ifstream ifs;
     ifs.open(json);
     if (!ifs.is_open() || !ifs.good()) {
@@ -83,6 +78,11 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
     const bool isNumerical = value["is_numerical"] == "true" ? true : false;
     const std::string preAsString = value["pre"].dump();
     const cost_t cost = std::stod(value["cost"].dump());
+    if (cost <= eps_) {
+      throw std::runtime_error(utils::format(
+          "Cannot add rule with feature ID {} because the cost is too small",
+          attackedFeatureIndex));
+    }
     const feature_t post = std::stod(value["post"].dump());
     if (isNumerical) {
       auto start = preAsString.find('(');
@@ -93,9 +93,15 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
       stop = preAsString.find(')', start);
       const feature_t stopRange =
           std::stod(preAsString.substr(start, stop - start));
-      rules_.push_back(
-          AttackerRule({attackedFeatureIndex, {startRange, stopRange}},
-                       {attackedFeatureIndex, post}, cost, isNumerical));
+      const auto success = rules_.emplace(
+          attackedFeatureIndex,
+          AttackerRule(attackedFeatureIndex, {startRange, stopRange}, post,
+                       cost, isNumerical));
+      if (!success.second) {
+        throw std::runtime_error(utils::format(
+            "Cannot add rule with feature ID {} because would be a duplicate",
+            attackedFeatureIndex));
+      }
     } else {
       std::set<feature_t> preValues;
       auto start = preAsString.find('\'');
@@ -112,95 +118,106 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
                             key));
         }
       }
-      rules_.push_back(AttackerRule({attackedFeatureIndex, preValues},
-                                    {attackedFeatureIndex, post}, cost,
-                                    isNumerical));
-    }
-  }
-}
 
-std::vector<std::pair<record_t, cost_t>>
-Attacker::attack(const record_t &instance, const feature_t &featureId,
-                 const cost_t &cost) const {
-
-  // This is actually an implementation of __compute_attacks
-  if (!isFeatureAttackable(featureId)) {
-    // TODO: Check with Prof. Lucchese why we return a 0.0 + cost
-    //  (see line 281 'attacks_xf = [ (x,0+cost)]' of python code)
-    return {std::make_pair(instance, cost)};
-  } else {
-    // TODO: build a cache of the attacks?
-    return computeAttack(instance, featureId, cost);
-  }
-}
-
-bool Attacker::isFeatureAttackable(const feature_t &featureId) const {
-
-  for (const auto &rule : rules_) {
-    if (rule.getTargetFeatureIndex() == featureId) {
-      return true;
-    }
-  }
-  return false;
-}
-
-std::vector<std::pair<record_t, cost_t>>
-Attacker::computeAttack(const record_t &instance, const feature_t &featureId,
-                        const cost_t &cost) const {
-
-  const auto isEqualPerturbation = [](const std::pair<record_t, cost_t> &a,
-                                      const std::pair<record_t, cost_t> &b) {
-    const auto n = a.first.size();
-    if (n != b.first.size()) {
-      throw std::runtime_error("Cannot use isEqualPerturbation lambda");
-    }
-    if (a.second > b.second) {
-      return false;
-    }
-    // Check on the record
-    for (index_t i = 0; i < n; i++) {
-      if (a.first[i] != b.first[i]) {
-        return false;
+      const auto success = rules_.emplace(
+          attackedFeatureIndex, AttackerRule(attackedFeatureIndex, preValues,
+                                             post, cost, isNumerical));
+      if (!success.second) {
+        throw std::runtime_error(utils::format(
+            "Cannot add rule with feature ID {} because would be a duplicate",
+            attackedFeatureIndex));
       }
     }
-    // Return true if a.first is equal to b.first and a.second <= b.second
-    return true;
-  };
+  }
+}
+
+std::vector<std::pair<record_t, cost_t>>
+Attacker::attack(const record_t &instance) const {
+
+  std::vector<index_t> featuresToAttack;
+  for (const auto &r : rules_) {
+    featuresToAttack.push_back(r.first);
+  }
 
   std::vector<std::pair<record_t, cost_t>> ret;
-  // Prepare the queue for the recursion
-  std::stack<std::pair<record_t, cost_t>> stack;
-  stack.push(std::make_pair(instance, cost));
-  while (!stack.empty()) {
-    // Pop the top element
-    const auto [x, b] = stack.top();
-    stack.pop();
-    //
-    ret.emplace_back(x, b);
-    // Repopulate the queue
-    for (const auto &rule : rules_) {
-      if (rule.isApplicable(featureId, instance[featureId]) &&
-          budget_ >= b + rule.getCost()) {
-        const auto newInstanceAndCost =
-            std::make_pair(rule.apply(instance), b + rule.getCost());
-        // I do not want to insert duplicates based on
-        bool isPresent = [&]() -> bool {
-          for (const auto &i : ret) {
-            if (isEqualPerturbation(i, newInstanceAndCost)) {
-              return true;
-            }
-          }
-          return false;
-        }();
+  ret.emplace_back(instance, 0.0);
 
-        if (!isPresent) {
-          ret.emplace_back(newInstanceAndCost);
+  // TODO: Check with Prof. Lucchese why we return a 0.0 + cost
+  //  (see line 281 'attacks_xf = [ (x,0+cost)]' of python code)
+  // TODO: build a cache of the attacks?
+
+  attackRic(featuresToAttack, ret);
+  return ret;
+}
+
+void Attacker::attackRic(
+    const indexes_t &featureIdsToAttack,
+    std::vector<std::pair<record_t, cost_t>> &accumulator) const {
+
+  // Get the last instance inserted, it is our basis
+  const auto &[instance, currentCost] = accumulator.back();
+
+  // Generate the 2^n possible attacked instances, where n = validIds.size()
+  std::queue<
+      std::tuple<std::vector<double>, std::vector<bool>, double, unsigned>>
+      q;
+  q.push(std::make_tuple(instance,
+                         std::vector<bool>(featureIdsToAttack.size(), false),
+                         currentCost, 0));
+  while (!q.empty()) {
+    const auto [attackedInstance, attackedActiveVector, attackedCost,
+                firstIdToAttack] = q.front();
+    q.pop();
+    for (unsigned i = firstIdToAttack; i < attackedActiveVector.size(); i++) {
+      const auto featureIdToAttack = featureIdsToAttack[i];
+      const auto cost = rules_.at(featureIdToAttack).getCost();
+      const auto expectedCost = attackedCost + cost;
+      if (expectedCost <= eps_ + budget_) {
+        // Create the new instance
+        std::vector<double> newInstance =
+            rules_.at(featureIdToAttack).apply(instance);
+        // Update the queue
+        std::vector<bool> newAttackedActiveVector(attackedActiveVector);
+        newAttackedActiveVector[i] = true;
+        q.push(std::make_tuple(newInstance, newAttackedActiveVector,
+                               expectedCost, i + 1));
+        accumulator.emplace_back(newInstance, expectedCost);
+        // Print the new feature added
+        std::cout << "{ ";
+        for (const auto &d : newInstance) {
+          std::cout << d << " ";
         }
-        // TODO: check with Lucchese if we need the IF-block at line 367
-        //       I don't think so, is_applicable already checks the extremes
+        std::cout << "} cost: " << expectedCost << std::endl;
+        // Prepare the new feature ids to attack
+        indexes_t newFeatureIdsToAttack;
+        for (unsigned ii = 0; ii < newAttackedActiveVector.size(); ii++) {
+          if (newAttackedActiveVector[ii]) {
+            newFeatureIdsToAttack.emplace_back(featureIdsToAttack[ii]);
+          }
+        }
+        // recursive call
+        attackRic(newFeatureIdsToAttack, accumulator);
       }
-    }
-  }
+    } // end of for loop for children generation
+  }   // end of recursion on queue
+}
 
+std::vector<std::pair<record_t, cost_t>>
+Attacker::attack(const record_t &instance, const index_t &featureId,
+                 const cost_t &cost) const {
+
+  std::vector<std::pair<record_t, cost_t>> ret;
+  if (rules_.find(featureId) == rules_.end()) {
+    // TODO: check with Prof. Lucchese if the cost must be 0.0 or 'cost', I would expect 0.0
+    ret.emplace_back(instance, cost);
+  } else {
+      cost_t currentCost = 0.0;
+      cost_t featureAttackCost = rules_.at(featureId).getCost();
+      while (currentCost <= budget_) {
+          const auto& lastInstance = ret.back().first;
+          ret.emplace_back(rules_.at(featureId).apply(lastInstance), currentCost);
+          currentCost = ret.back().second + featureAttackCost;
+      }
+  }
   return ret;
 }
