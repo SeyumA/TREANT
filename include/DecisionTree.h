@@ -10,6 +10,7 @@
 
 #include <iosfwd>
 #include <vector>
+#include <unordered_map>
 
 class Node;
 class Dataset;
@@ -30,7 +31,7 @@ public:
 
   [[nodiscard]] std::size_t getHeight() const;
 
-  void fit(const Dataset &dataset, int budget,
+  void fit(const Dataset &dataset, cost_t budget,
            Impurity impurityType);
 
   [[nodiscard]] bool isTrained() const;
@@ -45,7 +46,7 @@ private:
   Node *fitRecursively(const Dataset &dataset, const indexes_t &rows,
                        const indexes_t &validFeatures,
                        std::size_t currHeight,
-                       const Attacker &attacker, const std::vector<int> &costs,
+                       const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
                        const prediction_t& currentPrediction,
                        Impurity impurityType,
                        const std::vector<Constraint>& constraints);

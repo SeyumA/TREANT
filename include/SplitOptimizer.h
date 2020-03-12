@@ -20,10 +20,11 @@ public:
   explicit SplitOptimizer(Impurity impurityType);
 
   // It returns the best splitting feature and the best splitting value
+  // The costs are maps because are always subsets
   [[nodiscard]] bool
   optimizeGain(const Dataset &dataset, const indexes_t &validInstances,
                const indexes_t &validFeatures, const Attacker &attacker,
-               const std::vector<cost_t> &costs,
+               const std::unordered_map<index_t, cost_t> &costs,
                const std::vector<Constraint> &constraints,
                const double &currentScore, const double &currentPredictionScore,
                // outputs
@@ -33,7 +34,8 @@ public:
                prediction_t &bestPredLeft, prediction_t &bestPredRight,
                double &bestSSEuma, std::vector<Constraint> &constraintsLeft,
                std::vector<Constraint> &constraintsRight,
-               std::vector<cost_t> &costsLeft, std::vector<cost_t> &costsRight
+               std::unordered_map<index_t, cost_t> &costsLeft,
+               std::unordered_map<index_t, cost_t> &costsRight
                // TODO: put the outputs in a struct
   ) const;
 
@@ -52,14 +54,15 @@ private:
   [[nodiscard]] bool
   optimizeSSE(const std::vector<label_t> &y, const indexes_t &leftSplit,
               const indexes_t &rightSplit, const indexes_t &unknownSplit,
-              const std::vector<Constraint>& constraints,
-              label_t &yHatLeft, label_t &yHatRight, gain_t &sse
+              const std::vector<Constraint> &constraints, label_t &yHatLeft,
+              label_t &yHatRight, gain_t &sse
               /*TODO: lossFunction, constraints*/) const;
 
   // Returns left, unknown, right
   // TODO: this code can go easily a method in the FeatureColumn class
   void simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
-                     const Attacker &attacker, const std::vector<cost_t> &costs,
+                     const Attacker &attacker,
+                     const std::unordered_map<index_t, cost_t> &costs,
                      const feature_t &splittingValue,
                      const index_t &splittingFeature, indexes_t &leftSplit,
                      indexes_t &rightSplit, indexes_t &unknownSplit) const;
@@ -67,9 +70,9 @@ private:
   // Move the implementation to SplitOptimizer.cpp
   struct ExtraData {
     explicit ExtraData(const std::vector<label_t> &y,
-                       const indexes_t &leftIndexes,
-                       const indexes_t &rightIndexes,
-                       const indexes_t &unknownIndexes);
+                               const indexes_t &leftIndexes,
+                               const indexes_t &rightIndexes,
+                               const indexes_t &unknownIndexes);
 
     const std::vector<label_t> &y_;
     const indexes_t &leftIndexes_;
@@ -79,7 +82,10 @@ private:
   };
 
   static double sseCostFunction(const std::vector<double> &x,
-                                std::vector<double> &grad, void *my_func_data);
+                                std::vector<double> &grad, void *data);
+
+  static double constraintFunction(const std::vector<double> &x,
+                                   std::vector<double> &grad, void *data);
 };
 
 #endif // TREEANT_SPLITOPTIMIZER_H

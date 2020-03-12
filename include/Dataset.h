@@ -7,13 +7,13 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include <map>
 
-#include "types.h"
 #include "DecisionTree.h"
+#include "types.h"
 
 /**
  * The FeatureTypes enum must be consistent with feature_t
@@ -22,13 +22,13 @@
 class Dataset final {
 
 public:
-
   explicit Dataset(const std::string &featureFilePath);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  [[nodiscard]] const std::vector<std::vector<feature_t>> &getFeatureColumns() const;
+  [[nodiscard]] const std::vector<std::vector<feature_t>> &
+  getFeatureColumns() const;
 
   [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
 
@@ -36,10 +36,15 @@ public:
 
   [[nodiscard]] std::string getFeatureName(index_t i) const;
 
+  [[nodiscard]] index_t getFeatureIndex(const std::string &featureName) const;
+
+  [[nodiscard]] feature_t
+  getCategoricalFeatureValue(const std::string &featureName) const;
+
   [[nodiscard]] record_t getRecord(index_t i) const;
 
-//  [[nodiscard]] std::pair<label_t, frequency_t>
-//  getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
+  //  [[nodiscard]] std::pair<label_t, frequency_t>
+  //  getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
 
   [[nodiscard]] bool empty() const { return labelVector_.empty(); }
 

@@ -46,7 +46,7 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   return os << treeAsString(dt.root_, s, 0);
 }
 
-void DecisionTree::fit(const Dataset &dataset, int budget,
+void DecisionTree::fit(const Dataset &dataset, cost_t budget,
                        Impurity impurityType) {
   // Corner cases:
   if (dataset.empty()) {
@@ -66,13 +66,19 @@ void DecisionTree::fit(const Dataset &dataset, int budget,
   std::vector<std::size_t> validFeatures(dataset.getFeatureColumns().size());
   std::iota(validFeatures.begin(), validFeatures.end(), 0);
   // At the beginning all the costs are equal to 0.0
-  std::vector<cost_t> costs(dataset.size(), 0.0);
+  std::unordered_map<index_t, cost_t> costs;
+  for (const auto& f : validFeatures) {
+    costs[f] = 0.0;
+  }
+
   // Empty constraints at the beginning
   std::vector<Constraint> constraints;
   // Calculate current prediction as the default
   prediction_t currentPrediction = dataset.getDefaultPrediction();
 
-  root_ = fitRecursively(dataset, rows, validFeatures, 1, Attacker(), costs,
+  std::string attackerFile = "/home/dg/source/repos/uni/treeant/data/attacks.json";
+  Attacker attacker(dataset, attackerFile, budget);
+  root_ = fitRecursively(dataset, rows, validFeatures, 1, attacker, costs,
                          currentPrediction, impurityType, constraints);
 
   // height_ is updated in the fitRecursively method
@@ -83,7 +89,7 @@ bool DecisionTree::isTrained() const { return root_ != nullptr; }
 Node *DecisionTree::fitRecursively(
     const Dataset &dataset, const indexes_t &rows,
     const indexes_t &validFeatures, std::size_t currHeight,
-    const Attacker &attacker, const std::vector<int> &costs,
+    const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
     const prediction_t &nodePrediction, Impurity impurityType,
     const std::vector<Constraint> &constraints) {
 
@@ -139,7 +145,7 @@ Node *DecisionTree::fitRecursively(
   prediction_t bestPredLeft, bestPredRight;
   double bestSSEuma = 0.0;
   std::vector<Constraint> constraintsLeft, constraintsRight;
-  std::vector<cost_t> costsLeft, costsRight;
+  std::unordered_map<index_t, cost_t> costsLeft, costsRight;
 
   // Find the best split with the optimizer
   // TODO: continue from here 23 feb 2020

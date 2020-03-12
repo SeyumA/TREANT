@@ -5,7 +5,7 @@
 #include "Constraint.h"
 #include "Attacker.h"
 
-Constraint::Constraint(std::pair<record_t, cost_t> x, const label_t &y,
+Constraint::Constraint(const record_t &x, const label_t &y,
                        const cost_t &cost, const bool &inequality,
                        const gain_t &bound)
     : x_(std::move(x)), y_(y), cost_(cost), inequality_(inequality),
@@ -85,4 +85,12 @@ cost_t Constraint::calculateMinCost(
   return minCost;
 }
 
-void Constraint::setType(char type) { type_ = type; }
+void Constraint::setDirection(char direction) { direction_ = direction; }
+
+label_t Constraint::getY() const { return y_; }
+
+bool Constraint::getInequality() const { return inequality_; }
+
+gain_t Constraint::getBound() const { return bound_; }
+
+char Constraint::getDirection() const { return direction_; }

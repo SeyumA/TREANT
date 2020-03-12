@@ -183,8 +183,9 @@ Dataset::Dataset(const std::string &featureFilePath) {
   }
 }
 
-//std::pair<label_t, frequency_t>
-//Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const {
+// std::pair<label_t, frequency_t>
+// Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const
+// {
 //  std::map<label_t, frequency_t> labelToFrequency;
 //  // WARNING: Always work on the subset!
 //  for (const auto &index : validIndexes) {
@@ -222,6 +223,21 @@ bool Dataset::isFeatureNumerical(index_t j) const {
 
 std::string Dataset::getFeatureName(index_t i) const {
   return featureNames_[i];
+}
+
+index_t Dataset::getFeatureIndex(const std::string &featureName) const {
+  for (index_t i = 0; i < featureNames_.size(); i++) {
+    if (featureNames_[i] == featureName) {
+      return i;
+    }
+  }
+  throw std::runtime_error(utils::format(
+      "Cannot find name '{}' in dataset feature names", featureName));
+}
+
+feature_t
+Dataset::getCategoricalFeatureValue(const std::string &featureName) const {
+  return categoricalToDouble_.at(featureName);
 }
 
 std::ostream &operator<<(std::ostream &os, const Dataset &ds) {

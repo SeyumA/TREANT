@@ -46,15 +46,13 @@ SplitOptimizer::SplitOptimizer(Impurity impurityType) {
   }
 }
 
-void SplitOptimizer::simulateSplit(const Dataset &dataset,
-                                   const indexes_t &validInstances,
-                                   const Attacker &attacker,
-                                   const std::vector<cost_t> &costs,
-                                   const feature_t &splittingValue,
-                                   const index_t &splittingFeature,
-                                   // outputs
-                                   indexes_t &leftSplit, indexes_t &rightSplit,
-                                   indexes_t &unknownSplit) const {
+void SplitOptimizer::simulateSplit(
+    const Dataset &dataset, const indexes_t &validInstances,
+    const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
+    const feature_t &splittingValue, const index_t &splittingFeature,
+    // outputs
+    indexes_t &leftSplit, indexes_t &rightSplit,
+    indexes_t &unknownSplit) const {
 
   // Prepare the output
   if (!(leftSplit.empty() && rightSplit.empty() && unknownSplit.empty())) {
@@ -66,7 +64,7 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
   const auto &featureColumn = dataset.getFeatureColumn(splittingFeature);
 
   for (const auto &i : validInstances) {
-    const auto cost = costs[i];
+    const auto cost = costs.at(i);
     // The attack on a specific instance 'i' to its feature 'splittingFeature'
     // generates a set of new feature,
     // of those we are interested only in the i-th column
@@ -77,11 +75,11 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
 
     const std::string featureName = dataset.getFeatureName(splittingFeature);
     const auto attackedFeatureValue = featureColumn[i];
-    std::vector<feature_t> attacks =
-        attacker.attack(featureName, attackedFeatureValue, cost);
+    const auto attacks =
+        attacker.attack(dataset.getRecord(i), attackedFeatureValue, cost);
     for (const auto &atk : attacks) {
       if (isNumerical) {
-        if (atk <= splittingValue) {
+        if (atk.first[splittingFeature] <= splittingValue) {
           allRight = false;
         } else {
           allLeft = false;
@@ -90,7 +88,7 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
           break;
         }
       } else {
-        if (atk == splittingValue) {
+        if (atk.first[splittingFeature] == splittingValue) {
           allRight = false;
         } else {
           allLeft = false;
@@ -110,11 +108,6 @@ void SplitOptimizer::simulateSplit(const Dataset &dataset,
     }
   } // end of loop over instances
 }
-
-// Start Nlopt library test
-typedef struct {
-  double a, b;
-} my_constraint_data;
 
 double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
                                        std::vector<double> &grad,
@@ -166,18 +159,92 @@ double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
   return ret;
 }
 
-// double myvconstraint(const std::vector<double> &x, std::vector<double> &grad,
-//                     void *data) {
-//  auto *d = reinterpret_cast<my_constraint_data *>(data);
-//  double a = d->a, b = d->b;
-//  if (!grad.empty()) {
-//    grad[0] = 3 * a * (a * x[0] + b) * (a * x[0] + b);
-//    grad[1] = -1.0;
-//  }
-//  return ((a * x[0] + b) * (a * x[0] + b) * (a * x[0] + b) - x[1]);
-//}
+double SplitOptimizer::constraintFunction(const std::vector<double> &x,
+                                          std::vector<double> &grad,
+                                          void *data) {
 
-// NLOPT test end
+  // Cast to Constraint pointer
+  auto *d = reinterpret_cast<Constraint *>(data);
+  const auto direction = d->getDirection();
+  const auto y = d->getY();
+  const auto inequality = d->getInequality();
+  const auto bound = d->getBound();
+
+  double boundMinusYSquared = (bound - y) * (bound - y);
+  double x0minusY = x[0] - y;
+  double x1minusY = x[1] - y;
+  double x0minusYSquared = x0minusY * x0minusY;
+  double x1minusYSquared = x1minusY * x1minusY;
+
+  if (!grad.empty()) {
+    switch (direction) {
+    case 'L':
+      grad[0] = !inequality ? (2.0 * x0minusY) : (-2.0 * x0minusY);
+      grad[1] = 0.0;
+      break;
+    case 'R':
+      grad[0] = 0.0;
+      grad[1] = !inequality ? (2.0 * x1minusY) : (-2.0 * x1minusY);
+      break;
+    case 'U':
+      if (!inequality) {
+        // Take the minimum
+        if (x0minusYSquared < x1minusYSquared) {
+          grad[0] = x0minusY;
+          grad[1] = 0.0;
+        } else {
+          grad[0] = 0.0;
+          grad[1] = x1minusY;
+        }
+      } else {
+        // Take the maximum
+        if (x0minusYSquared < x1minusYSquared) {
+          grad[0] = 0.0;
+          grad[1] = x1minusY;
+        } else {
+          grad[0] = x0minusY;
+          grad[1] = 0.0;
+        }
+      }
+      break;
+    default:
+      throw std::runtime_error(
+          "Unexpected direction in SplitOptimizer::constraintFunction");
+    }
+  }
+
+  double ret;
+  // The inequality cases are swapped in respect to python code because in the
+  // minimize function the constraints are supposed to be '>=' and in nlopt '<='
+  switch (direction) {
+  case 'L':
+    ret = !inequality ? (x0minusYSquared - boundMinusYSquared)
+                      : (-x0minusYSquared + boundMinusYSquared);
+    break;
+  case 'R':
+    ret = !inequality ? (x1minusYSquared - boundMinusYSquared)
+                      : (-x1minusYSquared + boundMinusYSquared);
+    break;
+  case 'U':
+    if (!inequality) {
+      // Take the minimum
+      const double diff =
+          x0minusYSquared < x1minusYSquared ? x0minusYSquared : x1minusYSquared;
+      ret = diff - boundMinusYSquared;
+    } else {
+      // Take the maximum
+      const double diff =
+          x0minusYSquared < x1minusYSquared ? x1minusYSquared : x0minusYSquared;
+      ret = diff - boundMinusYSquared;
+    }
+    break;
+  default:
+    throw std::runtime_error(
+        "Unexpected direction in SplitOptimizer::constraintFunction");
+  }
+
+  return ret;
+}
 
 bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
                                  const indexes_t &leftSplit,
@@ -197,6 +264,12 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
   auto extraData = ExtraData(y, leftSplit, rightSplit, unknownSplit);
   // Set the cost function to minimize
   opt.set_min_objective(sseCostFunction, &extraData);
+  // Add the constraints
+  for (const auto &c : constraints) {
+    Constraint currentConstraint(c);
+    currentConstraint.setDirection(c.getDirection());
+    opt.add_inequality_constraint(constraintFunction, &currentConstraint, 1e-8);
+  }
   // Set the tolerance
   opt.set_xtol_rel(1e-4);
   // Initialize the x vector
@@ -206,10 +279,11 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
   try {
     nlopt::result result = opt.optimize(x, f);
     if (result < nlopt::result::SUCCESS) {
-      std::cout << "The result is not SUCCESS";
+      std::cout << "The result is not SUCCESS. Error code is " << result;
       return false;
     } else {
-      printf("found minimum after %d evaluations\n", extraData.count_);
+      std::cout << "found minimum after " << extraData.count_ << " evaluations"
+                << std::endl;
       std::cout << "found minimum at f(" << x[0] << "," << x[1]
                 << ") = " << std::setprecision(10) << f << std::endl;
       // Update the outputs
@@ -227,7 +301,7 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
 bool SplitOptimizer::optimizeGain(
     const Dataset &dataset, const indexes_t &validInstances,
     const indexes_t &validFeatures, const Attacker &attacker,
-    const std::vector<cost_t> &costs,
+    const std::unordered_map<index_t, cost_t> &costs,
     const std::vector<Constraint> &constraints, const double &currentScore,
     const double &currentPredictionScore, // (used by)/(forward to) optimizeSSE
     // outputs
@@ -237,8 +311,9 @@ bool SplitOptimizer::optimizeGain(
     split_value_t &bestNextSplitValue, prediction_t &bestPredLeft,
     prediction_t &bestPredRight, double &bestSSEuma,
     std::vector<Constraint> &constraintsLeft,
-    std::vector<Constraint> &constraintsRight, std::vector<cost_t> &costsLeft,
-    std::vector<cost_t> &costsRight) const {
+    std::vector<Constraint> &constraintsRight,
+    std::unordered_map<index_t, cost_t> &costsLeft,
+    std::unordered_map<index_t, cost_t> &costsRight) const {
 
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
@@ -271,7 +346,6 @@ bool SplitOptimizer::optimizeGain(
       //
       // TODO: propagate the constraints (see lines 1177-1190)
       //
-
       std::vector<Constraint> updatedConstraints;
       for (const auto &c : constraints) {
         // This part can be optimized: do we need all the Constraint object
@@ -281,13 +355,13 @@ bool SplitOptimizer::optimizeGain(
                                              splittingValue, isNumerical);
         if (cLeft.has_value() && cRight.has_value()) {
           updatedConstraints.push_back(c);
-          updatedConstraints.back().setType('U');
+          updatedConstraints.back().setDirection('U');
         } else if (cLeft.has_value()) {
           updatedConstraints.push_back(c);
-          updatedConstraints.back().setType('L');
+          updatedConstraints.back().setDirection('L');
         } else if (cRight.has_value()) {
           updatedConstraints.push_back(c);
-          updatedConstraints.back().setType('R');
+          updatedConstraints.back().setDirection('R');
         }
       }
 
@@ -320,56 +394,113 @@ bool SplitOptimizer::optimizeGain(
   }   // end loop on valid features
 
   // If the bestGain is > 0.0 than there is an improvement on the solution
+  // otherwise we return false
   if (bestGain > 0.0) {
     // Update constraints (see line 1289 of python code)
-    std::vector<Constraint> leftConstraints;
-    std::vector<Constraint> rightConstraints;
+    if (!(constraintsLeft.empty() && constraintsRight.empty())) {
+      throw std::runtime_error(
+          "left and right constraints must be empty at the beginning");
+    }
+    if (!(costsLeft.empty() && costsRight.empty())) {
+      throw std::runtime_error(
+          "left and right costs must be empty at the beginning");
+    }
+
     for (const auto &c : constraints) {
       auto cLeftOpt =
           c.propagateLeft(attacker, bestSplitFeatureId, bestSplitValue,
                           dataset.isFeatureNumerical(bestSplitFeatureId));
       if (cLeftOpt.has_value()) {
-        leftConstraints.push_back(std::move(cLeftOpt.value()));
+        constraintsLeft.push_back(std::move(cLeftOpt.value()));
       }
       auto cRightOpt =
           c.propagateRight(attacker, bestSplitFeatureId, bestSplitValue,
                            dataset.isFeatureNumerical(bestSplitFeatureId));
       if (cRightOpt.has_value()) {
-        rightConstraints.push_back(std::move(cRightOpt.value()));
+        constraintsRight.push_back(std::move(cRightOpt.value()));
       }
     }
     // Manage the unknown indexes, where are they going?
     const auto &y = dataset.getLabels();
     // see loop at line 1299
+    indexes_t unknownIndexesToLeft;
+    indexes_t unknownIndexesToRight;
     for (const auto &unknownIndex : bestSplitUnknown) {
-      const auto row = dataset.getRecord(unknownIndex);
+      const auto instance = dataset.getRecord(unknownIndex);
       const auto attacks =
-          attacker.attack(row, bestSplitFeatureId, costs[unknownIndex]);
+          attacker.attack(instance, bestSplitFeatureId, costs.at(unknownIndex));
 
-      if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
-
-      }
-
+      // Assuming the
+      cost_t costMinLeft = attacks[0].second;
+      // TODO: now I should find the minCost among the attacks, on the left side
+      //       there is always an attack with the original instance (that has
+      //       the lowest cost and, I suppose, is the first)
+      //       is it ok?
       const auto diffLeft = y[unknownIndex] - bestPredLeft;
       const auto unknownToLeft = diffLeft < 0.0 ? -diffLeft : diffLeft;
       const auto diffRight = y[unknownIndex] - bestPredRight;
       const auto unknownToRight = diffRight < 0.0 ? -diffRight : diffRight;
       if (unknownToLeft > unknownToRight) { // see line 1324 python
-
-
-
+        costsLeft[unknownIndex] = costMinLeft;
+        // Update the left indexes
+        unknownIndexesToLeft.emplace_back(unknownIndex);
+        // TODO: check with Lucchese if it is correct to have bestPredRight as
+        //   bound
+        constraintsLeft.emplace_back(instance, y[unknownIndex], costMinLeft,
+                                     true, bestPredRight);
+        constraintsRight.emplace_back(instance, y[unknownIndex], costMinLeft,
+                                      false, bestPredRight);
+      } else {
+        const cost_t costMinRight = [&]() {
+          std::vector<cost_t> costsOnRight;
+          for (const auto &atk : attacks) {
+            if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
+              if (atk.first[bestSplitFeatureId] > bestSplitValue) {
+                costsOnRight.push_back(atk.second);
+              }
+            } else {
+              if (atk.first[bestSplitFeatureId] != bestSplitValue) {
+                costsOnRight.push_back(atk.second);
+              }
+            }
+          }
+          if (costsOnRight.empty()) {
+            throw std::runtime_error(
+                "Cannot determine a valid cost for the right");
+          }
+          std::sort(costsOnRight.begin(), costsOnRight.end());
+          return *costsOnRight.begin();
+        }();
+        costsRight[unknownIndex] = costMinRight;
+        // Update the right indexes
+        unknownIndexesToRight.emplace_back(unknownIndex);
+        // TODO: check with Lucchese if it is correct to have bestPredLeft as
+        //   bound
+        constraintsLeft.emplace_back(instance, y[unknownIndex], costMinRight,
+                                     false, bestPredLeft);
+        constraintsRight.emplace_back(instance, y[unknownIndex], costMinRight,
+                                      true, bestPredLeft);
       }
     }
-
-    std::vector<label_t> yUnknown(best.)
-
-            std::cout
-        << "TODO: Work on unknown values\n";
-    // TODO update costs (line 1344 of python code)
+    // Update the left and right costs (no unknown indexes considered)
+    for (const auto &leftIndex : bestSplitLeft) {
+      costsLeft[leftIndex] = costs.at(leftIndex);
+    }
+    for (const auto &rightIndex : bestSplitRight) {
+      costsLeft[rightIndex] = costs.at(rightIndex);
+    }
+    // Update the indexes on the left and on the right with the unknown indexes
+    for (const auto& i : unknownIndexesToLeft) {
+      bestSplitLeft.emplace_back(i);
+    }
+    for (const auto& i : unknownIndexesToRight) {
+      bestSplitRight.emplace_back(i);
+    }
+    //
     return true;
+  } else {
+    return false;
   }
-  //
-  return false;
 }
 
 double SplitOptimizer::evaluateSplit(const Dataset &dataset,
@@ -378,9 +509,8 @@ double SplitOptimizer::evaluateSplit(const Dataset &dataset,
   return getLoss_(dataset, rows, prediction);
 }
 
-SplitOptimizer::ExtraData::ExtraData(const std::vector<label_t> &y,
-                                     const indexes_t &leftIndexes,
-                                     const indexes_t &rightIndexes,
-                                     const indexes_t &unknownIndexes)
+SplitOptimizer::ExtraData::ExtraData(
+    const std::vector<label_t> &y, const indexes_t &leftIndexes,
+    const indexes_t &rightIndexes, const indexes_t &unknownIndexes)
     : y_(y), leftIndexes_(leftIndexes), rightIndexes_(rightIndexes),
       unknownIndexes_(unknownIndexes), count_(0) {}

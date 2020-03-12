@@ -12,7 +12,7 @@
 
 using frequency_t = std::size_t;
 using label_t = double;
-using cost_t = int;
+using cost_t = double;
 using partition_t = std::vector<std::size_t>;
 using partitions_t = std::vector<std::vector<std::size_t>>;
 using index_t = std::size_t;
