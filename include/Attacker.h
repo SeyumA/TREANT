@@ -19,6 +19,10 @@ public:
   explicit Attacker(const Dataset &dataset, const std::string &json,
                     const cost_t &budget);
 
+  // TODO: addAttackerRule method where you can have more than one rule per
+  //       single instance but the pre conditions must be disjoint.
+  //       In this way only one rule can be applied to the instance for each step.
+
   // self.attacks (see AttackerRule class in the python file)
   // is a cache where the attacker pre-computes the possible attacks to an
   // instance. This function generates on-the-fly the attacks.
@@ -63,6 +67,7 @@ private:
   cost_t eps_ = 1e-7; // Needed for comparison
 
   // Private functions
+  // TODO: this method can be generalized replacing featureIdsToAttack with "applicableRules"
   void attackRic(const indexes_t &featureIdsToAttack,
                  std::vector<std::pair<record_t, cost_t>> &accumulator) const;
 };

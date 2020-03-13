@@ -204,13 +204,18 @@ void Attacker::attackRic(
 
 std::vector<std::pair<record_t, cost_t>>
 Attacker::attack(const record_t &instance, const index_t &featureId,
-                 const cost_t &cost) const {
+                 const cost_t &instanceCost) const {
 
+  // instanceCost is the cost paid so far to get to this instance
   std::vector<std::pair<record_t, cost_t>> ret;
   if (rules_.find(featureId) == rules_.end()) {
     // TODO: check with Prof. Lucchese if the cost must be 0.0 or 'cost', I would expect 0.0
-    ret.emplace_back(instance, cost);
+    ret.emplace_back(instance, instanceCost);
   } else {
+    // find among the rules the ONLY ONE that can be applied
+    // (it is the only one because the pre conditions are disjoint)
+
+
       cost_t currentCost = 0.0;
       cost_t featureAttackCost = rules_.at(featureId).getCost();
       while (currentCost <= budget_) {

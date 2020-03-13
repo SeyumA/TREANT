@@ -5,20 +5,62 @@
 #include "DecisionTree.h"
 #include "SplitOptimizer.h"
 
-double budget = 50.0;
-double EPS = 1e-7;
+double budget = 50;
+// double EPS = 1e-7;
 
-std::pair<double, double> getCostAndPostOfAttack(int featureId) {
+std::pair<int, int> getCostAndPostOfAttack(int featureId) {
   if (featureId == 0) {
-    return {10.0, -1.0};
+    return {10, -1};
   } else if (featureId == 1) {
-    return {15.0, -1.0};
+    return {15, -1};
   } else if (featureId == 2) {
-    return {25.0, -1.0};
+    return {25, -1};
   } else {
     throw std::runtime_error("Invalid feature Id");
   }
 }
+
+struct SimpleAttackRule {
+  SimpleAttackRule(int indexToAttack, int cost, std::vector<int> pre, int post,
+                   bool isNumerical)
+      : indexToAttack(indexToAttack), cost(cost), pre(std::move(pre)),
+        post(post), isNumerical(isNumerical) {
+    if (pre.empty() || !(isNumerical && pre.size() == 2 && pre[0] <= pre[1])) {
+      throw std::runtime_error(
+          "Invalid parameters in SimpleAttackRule constructor");
+    }
+  }
+
+  bool apply(const std::vector<int> &instance, const int &currentCost,
+             std::vector<int> &newInstance, int &newCost) {
+    if (indexToAttack < 0 || (unsigned)indexToAttack >= instance.size()) {
+      return false;
+    }
+    if (isNumerical && instance[indexToAttack] >= pre[0] &&
+        instance[indexToAttack] <= pre[1]) {
+      newInstance = std::vector<int>(instance);
+      newInstance[indexToAttack] += post;
+      newCost = currentCost + cost;
+      return true;
+    } else if (!isNumerical) {
+      for (const auto &i : pre) {
+        if (i == instance[indexToAttack]) {
+          newInstance = std::vector<int>(instance);
+          newInstance[indexToAttack] = post;
+          newCost = currentCost + cost;
+          return true;
+        }
+      };
+    }
+    return false;
+  }
+
+  int indexToAttack;
+  int cost;
+  std::vector<int> pre;
+  int post;
+  bool isNumerical;
+};
 
 void generateAttacksRic(
     const std::vector<int> &featureIdsToAttack,
