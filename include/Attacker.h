@@ -6,6 +6,7 @@
 #define TREEANT_ATTACKER_H
 
 #include "types.h"
+#include <forward_list>
 #include <set>
 #include <unordered_map>
 
@@ -21,19 +22,23 @@ public:
 
   // TODO: addAttackerRule method where you can have more than one rule per
   //       single instance but the pre conditions must be disjoint.
-  //       In this way only one rule can be applied to the instance for each step.
+  //       In this way only one rule can be applied to the instance for each
+  //       step.
 
   // self.attacks (see AttackerRule class in the python file)
   // is a cache where the attacker pre-computes the possible attacks to an
   // instance. This function generates on-the-fly the attacks.
-  // Assumption: one feature can have maximum one attacking rule (see Attacker constructor)
+  // Assumption: one feature can have maximum one attacking rule (see Attacker
+  // constructor)
   [[nodiscard]] std::vector<std::pair<record_t, cost_t>>
   attack(const record_t &instance) const;
 
   // Method having the same signature of python code (see line 257)
-  // Assumption: one feature can have maximum one attacking rule (see Attacker constructor)
+  // Assumption: one feature can have maximum one attacking rule (see Attacker
+  // constructor)
   [[nodiscard]] std::vector<std::pair<record_t, cost_t>>
-  attack(const record_t &instance, const index_t &featureId, const cost_t &cost) const;
+  attack(const record_t &instance, const index_t &featureId,
+         const cost_t &cost) const;
 
 private:
   // Private class
@@ -46,9 +51,13 @@ private:
 
     [[nodiscard]] index_t getTargetFeatureIndex() const;
 
-    [[nodiscard]] record_t apply(const record_t &instance) const;
+    [[nodiscard]] bool apply(const record_t &instance,
+                             record_t &newInstance) const;
 
     [[nodiscard]] const cost_t &getCost() const;
+
+    [[nodiscard]] bool areDisjoint(const std::set<feature_t> &preToTest) const;
+
 
   private:
     // First: the feature index; second: the possible values of the feature not
@@ -62,12 +71,13 @@ private:
   };
 
   // Private members
-  std::unordered_map<index_t, AttackerRule> rules_;
+  std::unordered_map<index_t, std::forward_list<AttackerRule>> rules_;
   cost_t budget_;
   cost_t eps_ = 1e-7; // Needed for comparison
 
   // Private functions
-  // TODO: this method can be generalized replacing featureIdsToAttack with "applicableRules"
+  // TODO: this method can be generalized replacing featureIdsToAttack with
+  // "applicableRules"
   void attackRic(const indexes_t &featureIdsToAttack,
                  std::vector<std::pair<record_t, cost_t>> &accumulator) const;
 };

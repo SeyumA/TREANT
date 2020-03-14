@@ -40,17 +40,27 @@ index_t Attacker::AttackerRule::getTargetFeatureIndex() const {
   return featureIndexToAttack_;
 }
 
-record_t Attacker::AttackerRule::apply(const record_t &instance) const {
-  auto ret = record_t(instance);
-  if (isNumerical_) {
-    ret[featureIndexToAttack_] += post_;
-  } else {
-    ret[featureIndexToAttack_] = post_;
+bool Attacker::AttackerRule::apply(const record_t &instance,
+                                   record_t &newInstance) const {
+  const auto preValue = instance[featureIndexToAttack_];
+  if (isNumerical_ && preValue >= *pre_.begin() &&
+      preValue <= *(std::next(pre_.begin()))) {
+    newInstance = record_t(instance);
+    newInstance[featureIndexToAttack_] += post_;
+    return true;
+  } else if (!isNumerical_ &&
+             pre_.find(instance[featureIndexToAttack_]) != pre_.end()) {
+    newInstance = record_t(instance);
+    newInstance[featureIndexToAttack_] = post_;
+    return true;
   }
-  return ret;
+  return false;
 }
 
 const cost_t &Attacker::AttackerRule::getCost() const { return cost_; }
+bool Attacker::AttackerRule::areDisjoint(const std::set<feature_t>& preToTest) const{
+return false;
+}
 
 // Attacker --------------------------------------------------------------------
 Attacker::Attacker(const Dataset &dataset, const std::string &json,
@@ -93,10 +103,17 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
       stop = preAsString.find(')', start);
       const feature_t stopRange =
           std::stod(preAsString.substr(start, stop - start));
-      const auto success = rules_.emplace(
-          attackedFeatureIndex,
-          AttackerRule(attackedFeatureIndex, {startRange, stopRange}, post,
-                       cost, isNumerical));
+      // TODO: do rules for
+      if (rules_.find(attackedFeatureIndex) != rules_.end()) {
+        for (const auto& r : rules_.at(attackedFeatureIndex)) {
+          r.
+        }
+        rules_.at(attackedFeatureIndex)
+            .push_front(AttackerRule(attackedFeatureIndex,
+                                     {startRange, stopRange}, post, cost,
+                                     isNumerical));
+      }
+      const auto success = rules_.emplace(attackedFeatureIndex, );
       if (!success.second) {
         throw std::runtime_error(utils::format(
             "Cannot add rule with feature ID {} because would be a duplicate",
@@ -154,75 +171,88 @@ void Attacker::attackRic(
     const indexes_t &featureIdsToAttack,
     std::vector<std::pair<record_t, cost_t>> &accumulator) const {
 
-  // Get the last instance inserted, it is our basis
-  const auto &[instance, currentCost] = accumulator.back();
-
-  // Generate the 2^n possible attacked instances, where n = validIds.size()
-  std::queue<
-      std::tuple<std::vector<double>, std::vector<bool>, double, unsigned>>
-      q;
-  q.push(std::make_tuple(instance,
-                         std::vector<bool>(featureIdsToAttack.size(), false),
-                         currentCost, 0));
-  while (!q.empty()) {
-    const auto [attackedInstance, attackedActiveVector, attackedCost,
-                firstIdToAttack] = q.front();
-    q.pop();
-    for (unsigned i = firstIdToAttack; i < attackedActiveVector.size(); i++) {
-      const auto featureIdToAttack = featureIdsToAttack[i];
-      const auto cost = rules_.at(featureIdToAttack).getCost();
-      const auto expectedCost = attackedCost + cost;
-      if (expectedCost <= eps_ + budget_) {
-        // Create the new instance
-        std::vector<double> newInstance =
-            rules_.at(featureIdToAttack).apply(instance);
-        // Update the queue
-        std::vector<bool> newAttackedActiveVector(attackedActiveVector);
-        newAttackedActiveVector[i] = true;
-        q.push(std::make_tuple(newInstance, newAttackedActiveVector,
-                               expectedCost, i + 1));
-        accumulator.emplace_back(newInstance, expectedCost);
-        // Print the new feature added
-        std::cout << "{ ";
-        for (const auto &d : newInstance) {
-          std::cout << d << " ";
-        }
-        std::cout << "} cost: " << expectedCost << std::endl;
-        // Prepare the new feature ids to attack
-        indexes_t newFeatureIdsToAttack;
-        for (unsigned ii = 0; ii < newAttackedActiveVector.size(); ii++) {
-          if (newAttackedActiveVector[ii]) {
-            newFeatureIdsToAttack.emplace_back(featureIdsToAttack[ii]);
-          }
-        }
-        // recursive call
-        attackRic(newFeatureIdsToAttack, accumulator);
-      }
-    } // end of for loop for children generation
-  }   // end of recursion on queue
+  throw std::runtime_error("To be implemented");
+  //
+  //  // Get the last instance inserted, it is our basis
+  //  const auto &[instance, currentCost] = accumulator.back();
+  //
+  //  // Generate the 2^n possible attacked instances, where n = validIds.size()
+  //  std::queue<
+  //      std::tuple<std::vector<double>, std::vector<bool>, double, unsigned>>
+  //      q;
+  //  q.push(std::make_tuple(instance,
+  //                         std::vector<bool>(featureIdsToAttack.size(),
+  //                         false), currentCost, 0));
+  //  while (!q.empty()) {
+  //    const auto [attackedInstance, attackedActiveVector, attackedCost,
+  //                firstIdToAttack] = q.front();
+  //    q.pop();
+  //    for (unsigned i = firstIdToAttack; i < attackedActiveVector.size(); i++)
+  //    {
+  //      const auto featureIdToAttack = featureIdsToAttack[i];
+  //      // TODO: find the rule to apply
+  //      const auto cost = rules_.at(featureIdToAttack).getCost();
+  //      const auto expectedCost = attackedCost + cost;
+  //      if (expectedCost <= eps_ + budget_) {
+  //        // Create the new instance
+  //
+  //        // TODO: find the rule to apply
+  //        std::vector<double> newInstance =
+  //            rules_.at(featureIdToAttack).apply(instance);
+  //        // Update the queue
+  //        std::vector<bool> newAttackedActiveVector(attackedActiveVector);
+  //        newAttackedActiveVector[i] = true;
+  //        q.push(std::make_tuple(newInstance, newAttackedActiveVector,
+  //                               expectedCost, i + 1));
+  //        accumulator.emplace_back(newInstance, expectedCost);
+  //        // Print the new feature added
+  //        std::cout << "{ ";
+  //        for (const auto &d : newInstance) {
+  //          std::cout << d << " ";
+  //        }
+  //        std::cout << "} cost: " << expectedCost << std::endl;
+  //        // Prepare the new feature ids to attack
+  //        indexes_t newFeatureIdsToAttack;
+  //        for (unsigned ii = 0; ii < newAttackedActiveVector.size(); ii++) {
+  //          if (newAttackedActiveVector[ii]) {
+  //            newFeatureIdsToAttack.emplace_back(featureIdsToAttack[ii]);
+  //          }
+  //        }
+  //        // recursive call
+  //        attackRic(newFeatureIdsToAttack, accumulator);
+  //      }
+  //    } // end of for loop for children generation
+  //  }   // end of recursion on queue
 }
 
 std::vector<std::pair<record_t, cost_t>>
 Attacker::attack(const record_t &instance, const index_t &featureId,
                  const cost_t &instanceCost) const {
 
-  // instanceCost is the cost paid so far to get to this instance
+  // instanceCost is the cost paid so far to get to this instance,
+  // so the cost of the attack 0, or better remains instanceCost
   std::vector<std::pair<record_t, cost_t>> ret;
   if (rules_.find(featureId) == rules_.end()) {
-    // TODO: check with Prof. Lucchese if the cost must be 0.0 or 'cost', I would expect 0.0
+    // TODO: check with Prof. Lucchese if the cost must be 0.0 or 'cost', I
+    // would expect 0.0
     ret.emplace_back(instance, instanceCost);
   } else {
     // find among the rules the ONLY ONE that can be applied
     // (it is the only one because the pre conditions are disjoint)
-
-
-      cost_t currentCost = 0.0;
-      cost_t featureAttackCost = rules_.at(featureId).getCost();
-      while (currentCost <= budget_) {
-          const auto& lastInstance = ret.back().first;
-          ret.emplace_back(rules_.at(featureId).apply(lastInstance), currentCost);
-          currentCost = ret.back().second + featureAttackCost;
+    cost_t currentCost = instanceCost;
+    bool canBeAttacked = true;
+    while (currentCost <= budget_ && canBeAttacked) {
+      record_t newInstance;
+      canBeAttacked = false;
+      for (const auto &r : rules_.at(featureId)) {
+        if (r.apply(instance, newInstance)) {
+          currentCost += r.getCost();
+          ret.emplace_back(newInstance, currentCost);
+          canBeAttacked = true;
+          break;
+        }
       }
+    }
   }
   return ret;
 }
