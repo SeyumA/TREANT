@@ -77,7 +77,7 @@ private:
 
   // Private functions
   // TODO: this method can be generalized replacing featureIdsToAttack with
-  // "applicableRules"
+  //      "applicableRules"
   void attackRic(const indexes_t &featureIdsToAttack,
                  std::vector<std::pair<record_t, cost_t>> &accumulator) const;
 };

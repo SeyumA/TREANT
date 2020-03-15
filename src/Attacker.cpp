@@ -34,6 +34,8 @@ Attacker::AttackerRule::AttackerRule(index_t featureIndexToAttack,
         "feature must have two components in the 'pre' "
         "set and the first one must be <= to the second one");
   }
+  // Sort the set in order to do properly the set_intersection is not needed
+  // because the elements of a set are ordered.
 }
 
 index_t Attacker::AttackerRule::getTargetFeatureIndex() const {
@@ -58,8 +60,24 @@ bool Attacker::AttackerRule::apply(const record_t &instance,
 }
 
 const cost_t &Attacker::AttackerRule::getCost() const { return cost_; }
-bool Attacker::AttackerRule::areDisjoint(const std::set<feature_t>& preToTest) const{
-return false;
+
+bool Attacker::AttackerRule::areDisjoint(
+    const std::set<feature_t> &preToTest) const {
+
+  if (isNumerical_ && !preToTest.empty() && preToTest.size() == 2 &&
+      *preToTest.begin() <= *preToTest.rbegin()) {
+    return *preToTest.begin() > *pre_.rbegin() ||
+           *preToTest.rbegin() < *pre_.begin();
+  } else if (!isNumerical_ && !preToTest.empty()) {
+    // You do not need to sort the elements of a set because they are already.
+    std::vector<feature_t> v(pre_.size() + preToTest.size());
+    const auto it =
+        std::set_intersection(pre_.begin(), pre_.end(), preToTest.begin(),
+                              preToTest.end(), v.begin());
+    return it == v.begin();
+  } else {
+    throw std::runtime_error("Cannot say if the sets are disjoint");
+  }
 }
 
 // Attacker --------------------------------------------------------------------
@@ -103,31 +121,30 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
       stop = preAsString.find(')', start);
       const feature_t stopRange =
           std::stod(preAsString.substr(start, stop - start));
-      // TODO: do rules for
+      const std::set<feature_t> pre = {startRange, stopRange};
+      // Add the rule to the map
       if (rules_.find(attackedFeatureIndex) != rules_.end()) {
-        for (const auto& r : rules_.at(attackedFeatureIndex)) {
-          r.
+        for (const auto &r : rules_.at(attackedFeatureIndex)) {
+          if (!r.areDisjoint(pre)) {
+            throw std::runtime_error(
+                "Cannot add this rule because 'pre' sets are not disjoint");
+          }
         }
         rules_.at(attackedFeatureIndex)
-            .push_front(AttackerRule(attackedFeatureIndex,
-                                     {startRange, stopRange}, post, cost,
+            .push_front(AttackerRule(attackedFeatureIndex, pre, post, cost,
                                      isNumerical));
-      }
-      const auto success = rules_.emplace(attackedFeatureIndex, );
-      if (!success.second) {
-        throw std::runtime_error(utils::format(
-            "Cannot add rule with feature ID {} because would be a duplicate",
-            attackedFeatureIndex));
+      } else {
+        rules_[attackedFeatureIndex] = {
+            AttackerRule(attackedFeatureIndex, pre, post, cost, isNumerical)};
       }
     } else {
-      std::set<feature_t> preValues;
+      std::set<feature_t> pre;
       auto start = preAsString.find('\'');
       while (start != std::string::npos) {
         auto stop = preAsString.find('\'', start);
         const auto currFeatureName = preAsString.substr(start, stop - start);
-        const auto insertResult = preValues.insert(
-            dataset.getCategoricalFeatureValue(currFeatureName));
-        if (!insertResult.second) {
+        if (!pre.insert(dataset.getCategoricalFeatureValue(currFeatureName))
+                 .second) {
           throw std::runtime_error(
               utils::format("Invalid attacker rule definition for the "
                             "categorical feature {}: "
@@ -135,14 +152,20 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
                             key));
         }
       }
-
-      const auto success = rules_.emplace(
-          attackedFeatureIndex, AttackerRule(attackedFeatureIndex, preValues,
-                                             post, cost, isNumerical));
-      if (!success.second) {
-        throw std::runtime_error(utils::format(
-            "Cannot add rule with feature ID {} because would be a duplicate",
-            attackedFeatureIndex));
+      // Add the rule to the map
+      if (rules_.find(attackedFeatureIndex) != rules_.end()) {
+        for (const auto &r : rules_.at(attackedFeatureIndex)) {
+          if (!r.areDisjoint(pre)) {
+            throw std::runtime_error(
+                "Cannot add this rule because 'pre' sets are not disjoint");
+          }
+        }
+        rules_.at(attackedFeatureIndex)
+            .push_front(AttackerRule(attackedFeatureIndex, pre, post, cost,
+                                     isNumerical));
+      } else {
+        rules_[attackedFeatureIndex] = {
+            AttackerRule(attackedFeatureIndex, pre, post, cost, isNumerical)};
       }
     }
   }
@@ -150,6 +173,18 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
 
 std::vector<std::pair<record_t, cost_t>>
 Attacker::attack(const record_t &instance) const {
+
+  /*
+   *
+   *                                         0000(1)
+   *            1000      ->           0100          0010     0001
+   *    1100    1010  1001           0110 0101       0011
+   * 1110 1101  1011                 0111
+   * 1111
+   *
+   *
+   *
+   * */
 
   std::vector<index_t> featuresToAttack;
   for (const auto &r : rules_) {
@@ -233,8 +268,7 @@ Attacker::attack(const record_t &instance, const index_t &featureId,
   // so the cost of the attack 0, or better remains instanceCost
   std::vector<std::pair<record_t, cost_t>> ret;
   if (rules_.find(featureId) == rules_.end()) {
-    // TODO: check with Prof. Lucchese if the cost must be 0.0 or 'cost', I
-    // would expect 0.0
+    // The instance remains the same with its cost
     ret.emplace_back(instance, instanceCost);
   } else {
     // find among the rules the ONLY ONE that can be applied

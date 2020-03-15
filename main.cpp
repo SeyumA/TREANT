@@ -6,7 +6,7 @@
 #include "SplitOptimizer.h"
 
 double budget = 50;
-// double EPS = 1e-7;
+ double EPS = 1e-7;
 
 std::pair<int, int> getCostAndPostOfAttack(int featureId) {
   if (featureId == 0) {
@@ -112,18 +112,6 @@ void generateAttacksRic(
       }
     } // end of for loop for children generation
   }
-
-  /*
-   *
-   *                                         0000(1)
-   *            1000      ->           0100          0010     0001
-   *    1100    1010  1001           0110 0101       0011
-   * 1110 1101  1011                 0111
-   * 1111
-   *
-   *
-   *
-   * */
 }
 
 std::vector<std::pair<std::vector<double>, double>> generateAttacks() {
