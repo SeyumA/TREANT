@@ -183,30 +183,6 @@ Dataset::Dataset(const std::string &featureFilePath) {
   }
 }
 
-// std::pair<label_t, frequency_t>
-// Dataset::getMostFrequentLabel(const std::vector<index_t> &validIndexes) const
-// {
-//  std::map<label_t, frequency_t> labelToFrequency;
-//  // WARNING: Always work on the subset!
-//  for (const auto &index : validIndexes) {
-//    const auto &label = labelVector_[index];
-//    if (labelToFrequency.find(label) == labelToFrequency.end()) {
-//      labelToFrequency[label] = 1;
-//    } else {
-//      labelToFrequency[label] += 1;
-//    }
-//  }
-//  auto mostFrequentLabel = labelToFrequency.begin()->first;
-//  auto freq = labelToFrequency.begin()->second;
-//  for (const auto &[la, fr] : labelToFrequency) {
-//    if (fr > freq) {
-//      mostFrequentLabel = la;
-//      freq = fr;
-//    }
-//  }
-//  return std::make_pair(mostFrequentLabel, freq);
-//}
-
 const std::vector<label_t> &Dataset::getLabels() const { return labelVector_; }
 
 const std::vector<std::vector<feature_t>> &Dataset::getFeatureColumns() const {
