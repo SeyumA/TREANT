@@ -67,20 +67,21 @@ Dataset::Dataset(const std::string &featureFilePath) {
   std::size_t countLines = 1;
 
   feature_t mapValue = 0.0;
-  std::map<std::string, feature_t> categoricalToDouble;
-  const auto getDoubleFromToken =
-      [&mapValue, &categoricalToDouble](const std::string &token) {
-        try {
-          return std::make_pair(std::stod(token), true);
-        } catch (std::exception &) {
-          const auto [iter, isInserted] =
-              categoricalToDouble.insert({token, mapValue});
-          if (isInserted) {
-            mapValue++;
-          }
-          return std::make_pair(iter->second, false);
-        }
-      };
+  if (!categoricalToDouble_.empty()) {
+    std::runtime_error("categoricalToDouble map must be empty here!");
+  }
+  const auto getDoubleFromToken = [&mapValue, this](const std::string &token) {
+    try {
+      return std::make_pair(std::stod(token), true);
+    } catch (std::exception &) {
+      const auto [iter, isInserted] =
+          this->categoricalToDouble_.insert({token, mapValue});
+      if (isInserted) {
+        mapValue++;
+      }
+      return std::make_pair(iter->second, false);
+    }
+  };
   //
   // Build the map of categorical entries and find out which are numerical
   if (std::getline(ifs, line)) {
@@ -173,7 +174,6 @@ Dataset::Dataset(const std::string &featureFilePath) {
     throw std::runtime_error("Cannot build an empty dataset (invalid file)");
   }
   // Update the maps
-  categoricalToDouble_ = std::move(categoricalToDouble);
   for (const auto &[s, d] : categoricalToDouble_) {
     const auto iterIsInserted = categoricalToDoubleReversed_.insert({d, s});
     if (!iterIsInserted.second) {
@@ -235,9 +235,23 @@ index_t Dataset::getFeatureIndex(const std::string &featureName) const {
       "Cannot find name '{}' in dataset feature names", featureName));
 }
 
-feature_t
+std::optional<feature_t>
 Dataset::getCategoricalFeatureValue(const std::string &featureName) const {
-  return categoricalToDouble_.at(featureName);
+  std::optional<feature_t> ret = std::nullopt;
+  if (categoricalToDouble_.find(featureName) != categoricalToDouble_.end()) {
+    ret = categoricalToDouble_.at(featureName);
+  }
+  return ret;
+}
+
+std::optional<std::string>
+Dataset::getCategoricalFeatureName(const feature_t &featureValue) const {
+  std::optional<std::string> ret = std::nullopt;
+  if (categoricalToDoubleReversed_.find(featureValue) !=
+      categoricalToDoubleReversed_.end()) {
+    ret = categoricalToDoubleReversed_.at(featureValue);
+  }
+  return ret;
 }
 
 std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
@@ -278,8 +292,10 @@ prediction_t Dataset::getDefaultPrediction() const {
 
 record_t Dataset::getRecord(index_t i) const {
   record_t ret(featureColumns_.size());
-  for (std::size_t j = 0; featureColumns_.size(); j++) {
-    ret[j] = (featureColumns_[j])[i];
+  auto it = ret.begin();
+  for (const auto &col : featureColumns_) {
+    *it = col[i];
+    it++;
   }
   return ret;
 }

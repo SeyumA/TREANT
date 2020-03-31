@@ -28,7 +28,8 @@ void Node::setLeft(Node *left) { left_ = left; }
 
 void Node::setRight(Node *right) { right_ = right; }
 
-void Node::setNodePrediction(prediction_t predictionScore, prediction_t threshold) {
+void Node::setNodePrediction(prediction_t predictionScore,
+                             prediction_t threshold) {
   predictionScore_ = predictionScore;
   if (predictionScore < threshold) {
     prediction_ = 0.0;
@@ -45,11 +46,21 @@ void Node::setLossValue(double value) { lossValue_ = value; }
 
 void Node::setGainValue(double value) { gainValue_ = value; }
 
+void Node::setBestSplitFeatureId(index_t bestFeatureId) {
+  bestSplitFeatureId_ = bestFeatureId;
+}
+
+void Node::setBestSplitValue(feature_t bestSplitValue) {
+  bestSplitValue_ = bestSplitValue;
+}
+
 label_t Node::predict(const record_t &) const { return false; }
 
 std::string Node::stringify() const {
-  if (bestSplitValue_.has_value()) {
-      return utils::format("th = {}", bestSplitValue_.value());
+  if (!left_ && !right_) {
+    return utils::format("Prediction = {}, Score: {}", prediction_,
+                         predictionScore_);
   }
-  throw std::runtime_error("Cannot stringify this node");
+  return utils::format("Feature ID: {}; Threshold = {}", bestSplitFeatureId_.value(),
+                       bestSplitValue_.value());
 }

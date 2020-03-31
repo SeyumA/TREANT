@@ -5,11 +5,11 @@
 #include "Constraint.h"
 #include "Attacker.h"
 
-Constraint::Constraint(const record_t &x, const label_t &y,
+Constraint::Constraint(record_t x, const label_t &y,
                        const cost_t &cost, const bool &inequality,
                        const gain_t &bound)
     : x_(std::move(x)), y_(y), cost_(cost), inequality_(inequality),
-      bound_(bound) {}
+      bound_(bound), direction_('x') {}
 
 std::optional<Constraint> Constraint::propagateLeft(const Attacker &attacker,
                                                     index_t featureId,

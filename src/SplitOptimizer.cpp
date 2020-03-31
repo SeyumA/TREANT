@@ -61,22 +61,24 @@ void SplitOptimizer::simulateSplit(
   }
 
   bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-  const auto &featureColumn = dataset.getFeatureColumn(splittingFeature);
+  if (!isNumerical &&
+      dataset.getCategoricalFeatureName(splittingValue).has_value()) {
+    auto name = dataset.getCategoricalFeatureName(splittingValue).value();
+    std::cout << "f name = " << name << std::endl;
+  }
 
   for (const auto &i : validInstances) {
     const auto cost = costs.at(i);
     // The attack on a specific instance 'i' to its feature 'splittingFeature'
     // generates a set of new feature,
     // of those we are interested only in the i-th column
+    const auto attacks =
+        attacker.attack(dataset.getRecord(i), splittingFeature, cost);
 
     // See line 1014 of parallel_robust_forest.py
     bool allLeft = true;
     bool allRight = true;
 
-    const std::string featureName = dataset.getFeatureName(splittingFeature);
-    const auto attackedFeatureValue = featureColumn[i];
-    const auto attacks =
-        attacker.attack(dataset.getRecord(i));
     for (const auto &atk : attacks) {
       if (isNumerical) {
         if (atk.first[splittingFeature] <= splittingValue) {
@@ -84,21 +86,20 @@ void SplitOptimizer::simulateSplit(
         } else {
           allLeft = false;
         }
-        if (!allLeft && !allRight) {
-          break;
-        }
       } else {
         if (atk.first[splittingFeature] == splittingValue) {
           allRight = false;
         } else {
           allLeft = false;
         }
-        if (!allLeft && !allRight) {
-          break;
-        }
+      }
+      //
+      if (!allLeft && !allRight) {
+        break;
       }
     }
-    // Modify the output vectors accordingly
+    // Modify the output vectors accordingly (see __simulate_split in python
+    // code)
     if (allLeft) {
       leftSplit.push_back(i);
     } else if (allRight) {
@@ -253,10 +254,6 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
                                  const std::vector<Constraint> &constraints,
                                  label_t &yHatLeft, label_t &yHatRight,
                                  gain_t &sse) const {
-  if (!constraints.empty()) {
-    throw std::runtime_error(
-        "optimizeSSE does not accept constraints at the moment");
-  }
   //
   // The method is hardcoded to nlopt::LD_SLSQP like in the python code.
   // The dimension of the problem is 2: we are finding yHatLeft and yHatRight.
@@ -272,6 +269,7 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
   }
   // Set the tolerance
   opt.set_xtol_rel(1e-4);
+  opt.set_maxeval(100);
   // Initialize the x vector
   std::vector<feature_t> x = {yHatLeft, yHatRight};
   // Initialize the value of the function
@@ -282,10 +280,11 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
       std::cout << "The result is not SUCCESS. Error code is " << result;
       return false;
     } else {
-      std::cout << "found minimum after " << extraData.count_ << " evaluations"
-                << std::endl;
-      std::cout << "found minimum at f(" << x[0] << "," << x[1]
-                << ") = " << std::setprecision(10) << f << std::endl;
+      //      std::cout << "found minimum after " << extraData.count_ << "
+      //      evaluations"
+      //                << std::endl;
+      //      std::cout << "found minimum at f(" << x[0] << "," << x[1]
+      //                << ") = " << std::setprecision(10) << f << std::endl;
       // Update the outputs
       yHatLeft = x[0];
       yHatRight = x[1];
@@ -325,27 +324,28 @@ bool SplitOptimizer::optimizeGain(
   indexes_t bestSplitUnknown;
 
   for (const auto &splittingFeature : validFeatures) {
-
     // Build a set of unique feature values
-    // TODO: uniqueFeatureValues Could be cached
+    bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
     const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
+    // If not numerical the order can change with respect of dictionary
+    // "feature_map" in python for example ("Male":5, "Female":10) in python ->
+    // ("Female", "Male") but here we maintain the original order: (5, 10), in
+    // practise does not change anything
     const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
                                                   currentColumn.end());
-    bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
 
     for (auto it = uniqueFeatureValues.begin(); it != uniqueFeatureValues.end();
          ++it) {
-      // Take the candidate splitting value among the valid instances
-      // TODO: use quantiles as splitting values
+      // Using the iterator in order to evaluate next value (see
+      // bestNextSplitValue in the code below)
       const auto &splittingValue = *it;
+
       // find the best split with this value
       // line 1169 of the python code it is called self.__simulate_split
       indexes_t leftSplit, rightSplit, unknownSplit;
       simulateSplit(dataset, validInstances, attacker, costs, splittingValue,
                     splittingFeature, leftSplit, rightSplit, unknownSplit);
-      //
-      // TODO: propagate the constraints (see lines 1177-1190)
-      //
+      // Propagate the constraints (see lines 1177-1190)
       std::vector<Constraint> updatedConstraints;
       for (const auto &c : constraints) {
         // This part can be optimized: do we need all the Constraint object
@@ -411,13 +411,13 @@ bool SplitOptimizer::optimizeGain(
           c.propagateLeft(attacker, bestSplitFeatureId, bestSplitValue,
                           dataset.isFeatureNumerical(bestSplitFeatureId));
       if (cLeftOpt.has_value()) {
-        constraintsLeft.push_back(std::move(cLeftOpt.value()));
+        constraintsLeft.push_back(cLeftOpt.value());
       }
       auto cRightOpt =
           c.propagateRight(attacker, bestSplitFeatureId, bestSplitValue,
                            dataset.isFeatureNumerical(bestSplitFeatureId));
       if (cRightOpt.has_value()) {
-        constraintsRight.push_back(std::move(cRightOpt.value()));
+        constraintsRight.push_back(cRightOpt.value());
       }
     }
     // Manage the unknown indexes, where are they going?
@@ -444,8 +444,7 @@ bool SplitOptimizer::optimizeGain(
         costsLeft[unknownIndex] = costMinLeft;
         // Update the left indexes
         unknownIndexesToLeft.emplace_back(unknownIndex);
-        // TODO: check with Lucchese if it is correct to have bestPredRight as
-        //   bound
+        // Checked with Lucchese: it is correct to have bestPredRight as bound
         constraintsLeft.emplace_back(instance, y[unknownIndex], costMinLeft,
                                      true, bestPredRight);
         constraintsRight.emplace_back(instance, y[unknownIndex], costMinLeft,
@@ -487,13 +486,13 @@ bool SplitOptimizer::optimizeGain(
       costsLeft[leftIndex] = costs.at(leftIndex);
     }
     for (const auto &rightIndex : bestSplitRight) {
-      costsLeft[rightIndex] = costs.at(rightIndex);
+      costsRight[rightIndex] = costs.at(rightIndex);
     }
     // Update the indexes on the left and on the right with the unknown indexes
-    for (const auto& i : unknownIndexesToLeft) {
+    for (const auto &i : unknownIndexesToLeft) {
       bestSplitLeft.emplace_back(i);
     }
-    for (const auto& i : unknownIndexesToRight) {
+    for (const auto &i : unknownIndexesToRight) {
       bestSplitRight.emplace_back(i);
     }
     //
@@ -509,8 +508,9 @@ double SplitOptimizer::evaluateSplit(const Dataset &dataset,
   return getLoss_(dataset, rows, prediction);
 }
 
-SplitOptimizer::ExtraData::ExtraData(
-    const std::vector<label_t> &y, const indexes_t &leftIndexes,
-    const indexes_t &rightIndexes, const indexes_t &unknownIndexes)
+SplitOptimizer::ExtraData::ExtraData(const std::vector<label_t> &y,
+                                     const indexes_t &leftIndexes,
+                                     const indexes_t &rightIndexes,
+                                     const indexes_t &unknownIndexes)
     : y_(y), leftIndexes_(leftIndexes), rightIndexes_(rightIndexes),
       unknownIndexes_(unknownIndexes), count_(0) {}

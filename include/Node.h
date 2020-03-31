@@ -23,6 +23,8 @@ public:
   void setNodePrediction(prediction_t prediction, prediction_t threshold = 0.5);
   void setLossValue(double value);
   void setGainValue(double value);
+  void setBestSplitFeatureId(index_t bestFeatureId);
+  void setBestSplitValue(feature_t bestFeatureValue);
   [[nodiscard]] prediction_t getNodePrediction() const;
   [[nodiscard]] prediction_t getNodePredictionScore() const;
 

@@ -46,7 +46,10 @@ private:
   class AttackerRule {
 
   public:
-    explicit AttackerRule(index_t featureIndexToAttack, std::set<feature_t> pre,
+    explicit AttackerRule(index_t featureIndexToAttack, const std::set<feature_t>& pre,
+                          feature_t post, cost_t cost, bool isNumerical);
+
+    explicit AttackerRule(index_t featureIndexToAttack, const std::vector<feature_t>& pre,
                           feature_t post, cost_t cost, bool isNumerical);
 
     [[nodiscard]] index_t getTargetFeatureIndex() const;
@@ -56,15 +59,19 @@ private:
 
     [[nodiscard]] const cost_t &getCost() const;
 
-    [[nodiscard]] bool areDisjoint(const std::set<feature_t> &preToTest) const;
+    [[nodiscard]] bool areDisjoint(const AttackerRule &other) const;
 
 
   private:
+
+    explicit AttackerRule(index_t featureIndexToAttack,
+                          feature_t post, cost_t cost, bool isNumerical);
+
     // First: the feature index; second: the possible values of the feature not
     // yet attacked
     index_t featureIndexToAttack_;
     // it is a pair in the python code where featureIndexToAttack_ is first
-    std::set<feature_t> pre_;
+    std::vector<feature_t> pre_;
     feature_t post_; // featureId is pre_.first
     cost_t cost_{};
     bool isNumerical_{};

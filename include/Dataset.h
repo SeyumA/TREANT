@@ -38,8 +38,11 @@ public:
 
   [[nodiscard]] index_t getFeatureIndex(const std::string &featureName) const;
 
-  [[nodiscard]] feature_t
+  [[nodiscard]] std::optional<feature_t>
   getCategoricalFeatureValue(const std::string &featureName) const;
+
+  [[nodiscard]] std::optional<std::string>
+  getCategoricalFeatureName(const feature_t &featureValue) const;
 
   [[nodiscard]] record_t getRecord(index_t i) const;
 
@@ -58,8 +61,8 @@ private:
   std::vector<std::string> featureNames_;
   std::vector<bool> featureIsNumeric_;
 
-  std::map<std::string, feature_t> categoricalToDouble_;
-  std::map<feature_t, std::string> categoricalToDoubleReversed_;
+  std::unordered_map<std::string, feature_t> categoricalToDouble_;
+  std::unordered_map<feature_t, std::string> categoricalToDoubleReversed_;
 
   std::vector<std::vector<feature_t>> featureColumns_;
   std::vector<label_t> labelVector_;
