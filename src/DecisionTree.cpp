@@ -14,8 +14,6 @@
 #include "SplitOptimizer.h"
 #include "utils.h"
 
-DecisionTree::DecisionTree(std::size_t maxDepth) : maxDepth_(maxDepth) {}
-
 DecisionTree::DecisionTree(std::size_t maxDepth, bool isAffine)
     : maxDepth_(maxDepth), isAffine_(isAffine) {}
 

@@ -20,22 +20,13 @@ public:
   explicit Attacker(const Dataset &dataset, const std::string &json,
                     const cost_t &budget);
 
-  // TODO: addAttackerRule method where you can have more than one rule per
+  // NOTE: addAttackerRule method where you can have more than one rule per
   //       single instance but the pre conditions must be disjoint.
   //       In this way only one rule can be applied to the instance for each
   //       step.
-
-  // self.attacks (see AttackerRule class in the python file)
-  // is a cache where the attacker pre-computes the possible attacks to an
-  // instance. This function generates on-the-fly the attacks.
-  // Assumption: one feature can have maximum one attacking rule (see Attacker
-  // constructor)
-  [[nodiscard]] std::vector<std::pair<record_t, cost_t>>
-  attack(const record_t &instance) const;
-
   // Method having the same signature of python code (see line 257)
-  // Assumption: one feature can have maximum one attacking rule (see Attacker
-  // constructor)
+  // Assumption: one feature can have more than one attacking rule (see Attacker
+  // constructor) but the 'pre' values/intervals must be disjoint
   [[nodiscard]] std::vector<std::pair<record_t, cost_t>>
   attack(const record_t &instance, const index_t &featureId,
          const cost_t &cost) const;
@@ -80,13 +71,7 @@ private:
   // Private members
   std::unordered_map<index_t, std::forward_list<AttackerRule>> rules_;
   cost_t budget_;
-  cost_t eps_ = 1e-7; // Needed for comparison
-
-  // Private functions
-  // TODO: this method can be generalized replacing featureIdsToAttack with
-  //      "applicableRules"
-  void attackRic(const indexes_t &featureIdsToAttack,
-                 std::vector<std::pair<record_t, cost_t>> &accumulator) const;
+  cost_t eps_ = 1e-7; // Needed for comparison between float
 };
 
 #endif // TREEANT_ATTACKER_H

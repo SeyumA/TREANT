@@ -21,8 +21,7 @@ class DecisionTree final {
 public:
 
   // Constructor
-  explicit DecisionTree(std::size_t maxDepth);
-  explicit DecisionTree(std::size_t maxDepth, bool isAffine);
+  explicit DecisionTree(std::size_t maxDepth, bool isAffine = false);
 
   // Destructor
   ~DecisionTree();

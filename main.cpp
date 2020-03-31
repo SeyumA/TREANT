@@ -8,7 +8,7 @@
 int main() {
 
   std::string dataset_file_path =
-      "/home/dg/source/repos/uni/treeant/data/test_training_set.txt";
+      "../data/test_training_set.txt";
   Dataset dataset(dataset_file_path);
   std::cout << "The dataset is:" << std::endl << dataset << std::endl;
   std::size_t maxDepth = 4;
