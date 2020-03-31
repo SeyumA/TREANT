@@ -61,11 +61,6 @@ void SplitOptimizer::simulateSplit(
   }
 
   bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-  if (!isNumerical &&
-      dataset.getCategoricalFeatureName(splittingValue).has_value()) {
-    auto name = dataset.getCategoricalFeatureName(splittingValue).value();
-    std::cout << "f name = " << name << std::endl;
-  }
 
   for (const auto &i : validInstances) {
     const auto cost = costs.at(i);

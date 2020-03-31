@@ -44,6 +44,8 @@ void Node::setLossValue(double value) { lossValue_ = value; }
 
 void Node::setGainValue(double value) { gainValue_ = value; }
 
+void Node::setNumberConstraints(std::size_t n) { constraints_ = n; }
+
 void Node::setBestSplitFeatureId(index_t bestFeatureId) {
   bestSplitFeatureId_ = bestFeatureId;
 }
@@ -56,10 +58,13 @@ label_t Node::predict(const record_t &) const { return false; }
 
 std::string Node::stringify() const {
   if (!left_ && !right_) {
-    return utils::format("Prediction = {}, Score: {}", prediction_,
-                         predictionScore_);
+    return utils::format("Prediction = {}, Score: {}, Num. instances {}, Loss: "
+                         "{}, N. constraints {}",
+                         prediction_, predictionScore_, instancesAtTrain_,
+                         lossValue_, constraints_);
   }
-  return utils::format("Feature ID: {}; Threshold = {}, Num. Instances {}",
-                       bestSplitFeatureId_.value(), bestSplitValue_.value(),
-                       instancesAtTrain_);
+  return utils::format(
+      "Feature ID: {}; Threshold = {}, N. instances {}, Loss: {}, Gain: {}",
+      bestSplitFeatureId_.value(), bestSplitValue_.value(), instancesAtTrain_,
+      lossValue_, gainValue_);
 }

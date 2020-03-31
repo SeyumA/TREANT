@@ -168,8 +168,8 @@ Node *DecisionTree::fitRecursively(
       ss << bestSplitValue;
       ret->setBestSplitValue(ss.str());
     } else {
-      ret->setBestSplitValue(
-          *dataset.getCategoricalFeatureName(bestSplitValue));
+      const auto fName = *dataset.getCategoricalFeatureName(bestSplitValue);
+      ret->setBestSplitValue(utils::format("'{}'", fName));
     }
     //
     // Prepare for the recursive step ------------------------------------------
@@ -203,10 +203,8 @@ Node *DecisionTree::fitRecursively(
       height_ = currHeight;
     }
   }
-
-  // TODO: set node constraint, they are used ... (where ???)
-  //  (every node has a list of constraints that is empty in most of the test
-  //  cases)
-
+  // Set node number of constraints
+  ret->setNumberConstraints(constraints.size());
+  //
   return ret;
 }

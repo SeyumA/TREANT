@@ -22,6 +22,7 @@ public:
   void setNodePrediction(prediction_t prediction, prediction_t threshold = 0.5);
   void setLossValue(double value);
   void setGainValue(double value);
+  void setNumberConstraints(std::size_t n);
   void setBestSplitFeatureId(index_t bestFeatureId);
   void setBestSplitValue(const std::string &bestFeatureValue);
   [[nodiscard]] prediction_t getNodePrediction() const;
@@ -37,6 +38,7 @@ private:
   prediction_t predictionScore_;  // floating point
   double lossValue_;
   gain_t gainValue_;
+  std::size_t constraints_ = 0;
   std::optional<index_t> bestSplitFeatureId_;
   std::optional<std::string> bestSplitValue_;
   Node *left_ = nullptr;
