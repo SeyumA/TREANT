@@ -115,7 +115,7 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
     : budget_(budget) {
 
   static const std::string bigDoublePythonString = "np.inf";
-  static const std::string bigDoubleAsString = [](){
+  static const std::string bigDoubleAsString = []() {
     const auto bigDouble = std::numeric_limits<double>::max();
     std::ostringstream ss;
     ss << bigDouble;
@@ -170,7 +170,8 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
             // Check for big number
             auto bigDoublePos = s0.find(bigDoublePythonString);
             if (bigDoublePos != std::string::npos) {
-              s0 = s0.replace(bigDoublePos, bigDoublePythonString.size(), bigDoubleAsString);
+              s0 = s0.replace(bigDoublePos, bigDoublePythonString.size(),
+                              bigDoubleAsString);
             }
             const feature_t startRange = std::stod(s0);
             start = stop + 1;
@@ -179,7 +180,8 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
             // Check for big number
             bigDoublePos = s1.find(bigDoublePythonString);
             if (bigDoublePos != std::string::npos) {
-              s1 = s1.replace(bigDoublePos, bigDoublePythonString.size(), bigDoubleAsString);
+              s1 = s1.replace(bigDoublePos, bigDoublePythonString.size(),
+                              bigDoubleAsString);
             }
             const feature_t stopRange = std::stod(s1);
             const std::vector<feature_t> pre = {startRange, stopRange};
@@ -201,19 +203,26 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
               const auto stringCodeOpt =
                   dataset.getCategoricalFeatureValue(currFeatureName);
               if (!stringCodeOpt.has_value()) {
-                std::cout << "ERROR: Cannot get a valid code for feature '"
-                          << currFeatureName << "'" << std::endl;
-                return std::nullopt;
-              }
-              const auto insertionSuccess = pre.insert(stringCodeOpt.value());
-              if (!insertionSuccess.second) {
-                throw std::runtime_error(utils::format(
-                    "Invalid attacker rule definition for the "
-                    "categorical feature {}: "
-                    "there are duplicate entries in the 'pre' set",
-                    nameOfTheAttackedFeature));
+                std::cout << "WARNING: Cannot get a valid code for feature '"
+                          << currFeatureName
+                          << "'. This value will be not put in the 'pre' "
+                             "condition of rule regarding feature "
+                          << nameOfTheAttackedFeature << std::endl;
+              } else {
+                const auto insertionSuccess = pre.insert(stringCodeOpt.value());
+                if (!insertionSuccess.second) {
+                  throw std::runtime_error(utils::format(
+                      "Invalid attacker rule definition for the "
+                      "categorical feature {}: "
+                      "there are duplicate entries in the 'pre' set",
+                      nameOfTheAttackedFeature));
+                }
               }
               start = preAsString.find('\'', stop + 1);
+            }
+            // Cannot build an Attacker rule with an empty 'pre'
+            if (pre.empty()) {
+              return std::nullopt;
             }
             const auto postAsStringTrimmed =
                 postAsString.substr(1, postAsString.length() - 2);
@@ -356,7 +365,7 @@ Attacker::attack(const record_t &instance, const index_t &featureId,
     while (canBeAttacked) {
       record_t newInstance;
       canBeAttacked = false;
-      const auto& [lastAttacked, lastCost] = *ret.rbegin();
+      const auto &[lastAttacked, lastCost] = *ret.rbegin();
       for (const auto &r : rules_.at(featureId)) {
         const auto possibleCost = lastCost + r.getCost();
         if (possibleCost <= budget_ && r.apply(lastAttacked, newInstance)) {

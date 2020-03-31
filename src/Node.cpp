@@ -59,12 +59,12 @@ label_t Node::predict(const record_t &) const { return false; }
 std::string Node::stringify() const {
   if (!left_ && !right_) {
     return utils::format("Prediction = {}, Score: {}, Num. instances {}, Loss: "
-                         "{}, N. constraints {}",
+                         "{}",
                          prediction_, predictionScore_, instancesAtTrain_,
-                         lossValue_, constraints_);
+                         lossValue_);
   }
-  return utils::format(
-      "Feature ID: {}; Threshold = {}, N. instances {}, Loss: {}, Gain: {}",
-      bestSplitFeatureId_.value(), bestSplitValue_.value(), instancesAtTrain_,
-      lossValue_, gainValue_);
+  return utils::format("Feature ID: {}; Threshold = {}, N. instances {}, Loss: "
+                       "{}, Gain: {}, N. constraints {}",
+                       bestSplitFeatureId_.value(), bestSplitValue_.value(),
+                       instancesAtTrain_, lossValue_, gainValue_, constraints_);
 }
