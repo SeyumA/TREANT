@@ -5,17 +5,15 @@
 #include "Node.h"
 #include "utils.h"
 
-Node::Node()
-    : prediction_(0.0), bestSplitFeatureId_(std::nullopt),
-      bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
+Node::Node(std::size_t instancesAtTrain)
+    : instancesAtTrain_(instancesAtTrain), prediction_(0.0),
+      bestSplitFeatureId_(std::nullopt), bestSplitValue_(std::nullopt),
+      left_(nullptr), right_(nullptr) {}
 
-Node::Node(label_t prediction)
-    : prediction_(prediction), bestSplitFeatureId_(std::nullopt),
-      bestSplitValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
-
-Node::Node(index_t bestSplitFeatureId, feature_t bestSplitValue)
-    : prediction_(0.0), bestSplitFeatureId_(bestSplitFeatureId),
-      bestSplitValue_(bestSplitValue), left_(nullptr), right_(nullptr) {}
+Node::Node(std::size_t instancesAtTrain, label_t prediction)
+    : instancesAtTrain_(instancesAtTrain), prediction_(prediction),
+      bestSplitFeatureId_(std::nullopt), bestSplitValue_(std::nullopt),
+      left_(nullptr), right_(nullptr) {}
 
 Node::~Node() {
   delete left_;
@@ -50,7 +48,7 @@ void Node::setBestSplitFeatureId(index_t bestFeatureId) {
   bestSplitFeatureId_ = bestFeatureId;
 }
 
-void Node::setBestSplitValue(feature_t bestSplitValue) {
+void Node::setBestSplitValue(const std::string &bestSplitValue) {
   bestSplitValue_ = bestSplitValue;
 }
 
@@ -61,6 +59,7 @@ std::string Node::stringify() const {
     return utils::format("Prediction = {}, Score: {}", prediction_,
                          predictionScore_);
   }
-  return utils::format("Feature ID: {}; Threshold = {}", bestSplitFeatureId_.value(),
-                       bestSplitValue_.value());
+  return utils::format("Feature ID: {}; Threshold = {}, Num. Instances {}",
+                       bestSplitFeatureId_.value(), bestSplitValue_.value(),
+                       instancesAtTrain_);
 }

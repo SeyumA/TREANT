@@ -13,9 +13,8 @@
 class Node {
 
 public:
-  Node();
-  explicit Node(label_t prediction);
-  explicit Node(index_t bestSplitFeatureId, feature_t bestSplitValue);
+  explicit Node(std::size_t instancesAtTrain);
+  explicit Node(std::size_t instancesAtTrain, label_t prediction);
   ~Node();
 
   void setLeft(Node* left);
@@ -24,7 +23,7 @@ public:
   void setLossValue(double value);
   void setGainValue(double value);
   void setBestSplitFeatureId(index_t bestFeatureId);
-  void setBestSplitValue(feature_t bestFeatureValue);
+  void setBestSplitValue(const std::string &bestFeatureValue);
   [[nodiscard]] prediction_t getNodePrediction() const;
   [[nodiscard]] prediction_t getNodePredictionScore() const;
 
@@ -33,12 +32,13 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
 private:
+  std::size_t instancesAtTrain_ = 0;
   prediction_t prediction_;       // it seems to be the predictionScore_ but rounded
   prediction_t predictionScore_;  // floating point
   double lossValue_;
   gain_t gainValue_;
   std::optional<index_t> bestSplitFeatureId_;
-  std::optional<feature_t> bestSplitValue_;
+  std::optional<std::string> bestSplitValue_;
   Node *left_ = nullptr;
   Node *right_ = nullptr;
 

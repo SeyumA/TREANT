@@ -42,7 +42,7 @@ public:
 private:
   std::size_t maxDepth_ = 0;
   bool isAffine_ = false;
-  std::size_t maxPerNode_ = 20;
+  std::size_t minPerNode_ = 20;
   std::size_t height_ = 0;
   Node *root_ = nullptr;
 

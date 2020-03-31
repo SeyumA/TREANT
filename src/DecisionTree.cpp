@@ -119,16 +119,11 @@ Node *DecisionTree::fitRecursively(
     return nullptr;
   }
 
-  // Base case: we reach the maxDepth limit
-  // TODO: base case where all the labels are on one side,
-  //  maybe this case does not exists because it a regression (fp labels)
-  Node *ret = new Node(nodePrediction);
+  // Base case where all the labels are on one side is automatically handled
+  Node *ret = new Node(rows.size(), nodePrediction);
   // Weird passages but they are done in Python
   ret->setNodePrediction(nodePrediction);
-  //  prediction_t currentPrediction = ret->getNodePrediction(); // rounded
-  //  score
   prediction_t currentPredictionScore = ret->getNodePredictionScore();
-
   // We recreate the optimizer at each node for concurrency reasons
   const auto splitOptimizer = SplitOptimizer(impurityType);
   // Calculate the current score
@@ -136,17 +131,12 @@ Node *DecisionTree::fitRecursively(
       splitOptimizer.evaluateSplit(dataset, rows, currentPredictionScore);
   ret->setLossValue(currentScore);
 
-  // Base case -> return a leaf
-  if (currHeight == maxDepth_ || rows.size() < maxPerNode_) {
+  // Base case -> return a leaf if max depth is reached or too few rows
+  if (currHeight == maxDepth_ || rows.size() < minPerNode_) {
     // Returns false if the majority of the labels is false otherwise true,
     // tie case -> false.
     return ret;
   }
-
-  // TODO: Consider another base case
-  //       if you put the minimum number of instances per node and the instances
-  //       falling in this node are less than this number then we have another
-  //       base case (see base case 3 in parallel_robust_forest.py)
 
   // Get the best split (see line 1543 of parallel_robust_forest.py)
   gain_t bestGain = 0.0; // highest gain
@@ -173,10 +163,16 @@ Node *DecisionTree::fitRecursively(
     ret->setLossValue(bestSSEuma);
     ret->setGainValue(bestGain);
     ret->setBestSplitFeatureId(bestSplitFeatureId);
-    ret->setBestSplitValue(bestSplitValue);
-
+    if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
+      std::ostringstream ss;
+      ss << bestSplitValue;
+      ret->setBestSplitValue(ss.str());
+    } else {
+      ret->setBestSplitValue(
+          *dataset.getCategoricalFeatureName(bestSplitValue));
+    }
     //
-    // Prepare for the recursive step
+    // Prepare for the recursive step ------------------------------------------
     // Build the validFeaturesDownstream if isAffine (see line 1646 python code)
     const indexes_t validFeaturesDownstream =
         !this->isAffine_ ? indexes_t(validFeatures.begin(), validFeatures.end())
