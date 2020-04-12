@@ -60,8 +60,8 @@ std::string Node::stringify() const {
   if (!left_ && !right_) {
     return utils::format("Prediction = {}, Score: {}, Num. instances {}, Loss: "
                          "{}",
-                         prediction_, predictionScore_, instancesAtTrain_,
-                         lossValue_);
+                         static_cast<int>(prediction_), predictionScore_,
+                         instancesAtTrain_, lossValue_);
   }
   return utils::format("Feature ID: {}; Threshold = {}, N. instances {}, Loss: "
                        "{}, Gain: {}, N. constraints {}",

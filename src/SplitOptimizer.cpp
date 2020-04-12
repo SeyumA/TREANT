@@ -251,7 +251,7 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
                                  gain_t &sse) const {
   //
   // The method is hardcoded to nlopt::LD_SLSQP like in the python code.
-  // The dimension of the problem is 2: we are finding yHatLeft and yHatRight.
+  // The dimension of the problem is 2: we are looking for yHatLeft and yHatRight.
   nlopt::opt opt(nlopt::LD_SLSQP, 2);
   auto extraData = ExtraData(y, leftSplit, rightSplit, unknownSplit);
   // Set the cost function to minimize
@@ -262,8 +262,8 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
     currentConstraint.setDirection(c.getDirection());
     opt.add_inequality_constraint(constraintFunction, &currentConstraint, 1e-8);
   }
-  // Set the tolerance
-  opt.set_xtol_rel(1e-4);
+  // Set the tolerance (ftol in python -> acc -> fortran code)
+  opt.set_ftol_abs(1e-6);
   opt.set_maxeval(100);
   // Initialize the x vector
   std::vector<feature_t> x = {yHatLeft, yHatRight};
