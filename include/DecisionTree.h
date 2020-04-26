@@ -5,12 +5,12 @@
 #ifndef TREEANT_DECISIONTREE_H
 #define TREEANT_DECISIONTREE_H
 
-#include "types.h"
 #include "Constraint.h"
+#include "types.h"
 
 #include <iosfwd>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 class Node;
 class Dataset;
@@ -19,7 +19,6 @@ class Attacker;
 class DecisionTree final {
 
 public:
-
   // Constructor
   explicit DecisionTree(std::size_t maxDepth, bool isAffine = false);
 
@@ -31,8 +30,8 @@ public:
 
   [[nodiscard]] std::size_t getHeight() const;
 
-  void fit(const Dataset &dataset, cost_t budget,
-           Impurity impurityType);
+  void fit(const Dataset &dataset, const std::string &attackerFile,
+           cost_t budget, Impurity impurityType);
 
   [[nodiscard]] bool isTrained() const;
 
@@ -46,12 +45,12 @@ private:
   Node *root_ = nullptr;
 
   Node *fitRecursively(const Dataset &dataset, const indexes_t &rows,
-                       const indexes_t &validFeatures,
-                       std::size_t currHeight,
-                       const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
-                       const prediction_t& currentPrediction,
+                       const indexes_t &validFeatures, std::size_t currHeight,
+                       const Attacker &attacker,
+                       const std::unordered_map<index_t, cost_t> &costs,
+                       const prediction_t &currentPrediction,
                        Impurity impurityType,
-                       const std::vector<Constraint>& constraints);
+                       const std::vector<Constraint> &constraints);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);

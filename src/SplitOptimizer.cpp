@@ -108,51 +108,79 @@ void SplitOptimizer::simulateSplit(
 double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
                                        std::vector<double> &grad,
                                        void *my_func_data) {
+  // This function calculates f (see __sse_under_max_attack)
+  static auto f =
+      [](const std::vector<prediction_t> &y, const indexes_t &leftIndexes,
+         const indexes_t &rightIndexes, const indexes_t &unknownIndexes,
+         const std::vector<double> &leftRight) -> double {
+    const auto &left = leftRight[0];
+    const auto &right = leftRight[1];
+    double ret = 0.0;
+    // np.sum((L - left)**2.0)
+    for (const auto &leftIndex : leftIndexes) {
+      const double diff = static_cast<double>(y[leftIndex]) - left;
+      ret += diff * diff;
+    }
+    // + np.sum((R - right)**2.0)
+    for (const auto &rightIndex : rightIndexes) {
+      const double diff = static_cast<double>(y[rightIndex]) - right;
+      ret += diff * diff;
+    }
+    // + np.sum(np.maximum((U - left)**2.0, (U - right)**2.0))
+    for (const auto &unknownIndex : unknownIndexes) {
+      const double diffL = static_cast<double>(y[unknownIndex]) - left;
+      const double diffR = static_cast<double>(y[unknownIndex]) - right;
+      const double diffLsquared = diffL * diffL;
+      const double diffRsquared = diffR * diffR;
+      const auto max =
+          diffLsquared > diffRsquared ? diffLsquared : diffRsquared;
+      ret += max;
+    }
+    return ret;
+  };
+
+  // See slsqp.py line 31, function approx_jacobian
+  static auto approxJacobian =
+      [](const std::vector<prediction_t> &y, const indexes_t &leftIndexes,
+         const indexes_t &rightIndexes, const indexes_t &unknownIndexes,
+         const std::vector<double> &x0, const double &f0) {
+        // See scipy.optimize.slsqp code default eps value
+        static const double eps = 1.4901161193847656e-08;
+        static const double zero = 0.0f;
+        // Quick check on x0 size
+        if (x0.size() != 2) {
+          throw std::runtime_error("Gradient must have size = 2");
+        }
+        // Calculate the jacobian that is a vector of dimension 2
+        std::vector<double> jac(2, zero);
+        std::vector<double> xIncr(x0);
+        for (std::size_t i = 0; i < x0.size(); ++i) {
+          xIncr[i] += eps; // perturb the i-th entry of x0 with eps
+          const auto f_xIncr =
+              f(y, leftIndexes, rightIndexes, unknownIndexes, xIncr);
+          jac[i] = (f_xIncr - f0) / eps;
+          xIncr[i] = x0[i]; // reset xIncr[i]
+        }
+        return jac;
+      };
 
   // Cast the extra data
   auto *d = reinterpret_cast<ExtraData *>(my_func_data);
   // Update the iteration count
   d->count_ += 1;
   // Initialize the returning value
-  const auto &y = d->y_;
-  double ret = 0.0;
-  double sumDiff0 = 0.0;
-  double sumDiff1 = 0.0;
-  // Working on the left indexes
-  for (const auto &leftIndex : d->leftIndexes_) {
-    const double diff = x[0] - y[leftIndex];
-    sumDiff0 += diff;
-    ret += diff * diff;
-  }
-  // Working on the right indexes
-  for (const auto &rightIndex : d->rightIndexes_) {
-    const double diff = x[1] - y[rightIndex];
-    sumDiff1 += diff;
-    ret += diff * diff;
-  }
-  // Working on the unknown indexes
-  for (const auto &unknownIndex : d->unknownIndexes_) {
-    const double diffLeft = x[0] - y[unknownIndex];
-    const double diffLeftAbs = diffLeft < 0.0 ? -diffLeft : diffLeft;
-    const double diffRight = y[unknownIndex] - x[1];
-    const double diffRightAbs = diffRight < 0.0 ? -diffRight : diffRight;
-    const double diff = diffLeftAbs > diffRightAbs ? diffLeft : diffRight;
-    // diff is maximum possible difference, i.e. the difference between:
-    // |y[unknownIndex] - leftPred| and |y[unknownIndex] - rightPred|
-    if (diffLeftAbs > diffRightAbs) {
-      sumDiff0 += diff;
-    } else {
-      sumDiff1 += diff;
-    }
-    ret += diff * diff;
-  }
+  double fx =
+      f(d->y_, d->leftIndexes_, d->rightIndexes_, d->unknownIndexes_, x);
+
   // Update the gradient
   if (!grad.empty()) {
-    grad[0] = 2.0 * sumDiff0;
-    grad[1] = 2.0 * sumDiff1;
+    const auto jac = approxJacobian(d->y_, d->leftIndexes_, d->rightIndexes_,
+                                    d->unknownIndexes_, x, fx);
+    grad[0] = jac[0];
+    grad[1] = jac[1];
   }
   //
-  return ret;
+  return fx;
 }
 
 double SplitOptimizer::constraintFunction(const std::vector<double> &x,
@@ -246,21 +274,20 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
                                  const indexes_t &leftSplit,
                                  const indexes_t &rightSplit,
                                  const indexes_t &unknownSplit,
-                                 const std::vector<Constraint> &constraints,
+                                 std::vector<Constraint> &constraints,
                                  label_t &yHatLeft, label_t &yHatRight,
                                  gain_t &sse) const {
   //
   // The method is hardcoded to nlopt::LD_SLSQP like in the python code.
-  // The dimension of the problem is 2: we are looking for yHatLeft and yHatRight.
+  // The dimension of the problem is 2: we are looking for yHatLeft and
+  // yHatRight.
   nlopt::opt opt(nlopt::LD_SLSQP, 2);
   auto extraData = ExtraData(y, leftSplit, rightSplit, unknownSplit);
   // Set the cost function to minimize
   opt.set_min_objective(sseCostFunction, &extraData);
   // Add the constraints
-  for (const auto &c : constraints) {
-    Constraint currentConstraint(c);
-    currentConstraint.setDirection(c.getDirection());
-    opt.add_inequality_constraint(constraintFunction, &currentConstraint, 1e-8);
+  for (auto &constraint : constraints) {
+    opt.add_inequality_constraint(constraintFunction, &constraint, 1e-8);
   }
   // Set the tolerance (ftol in python -> acc -> fortran code)
   opt.set_ftol_abs(1e-6);
@@ -287,7 +314,10 @@ bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
       return true;
     }
   } catch (std::exception &e) {
-    std::cout << "nlopt failed: " << e.what() << std::endl;
+    std::cout << "nlopt failed: '" << e.what() << "', the leftSplit.size is "
+              << leftSplit.size() << ", the rightSplit.size is "
+              << rightSplit.size() << ", the unknownSplit.size is "
+              << unknownSplit.size() << std::endl;
     return false;
   }
 }

@@ -54,7 +54,7 @@ private:
   [[nodiscard]] bool
   optimizeSSE(const std::vector<label_t> &y, const indexes_t &leftSplit,
               const indexes_t &rightSplit, const indexes_t &unknownSplit,
-              const std::vector<Constraint> &constraints, label_t &yHatLeft,
+              std::vector<Constraint> &constraints, label_t &yHatLeft,
               label_t &yHatRight, gain_t &sse
               /*TODO: lossFunction, constraints*/) const;
 

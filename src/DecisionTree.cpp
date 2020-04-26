@@ -56,8 +56,8 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   return os << treeAsString(dt.root_, s, 0);
 }
 
-void DecisionTree::fit(const Dataset &dataset, cost_t budget,
-                       Impurity impurityType) {
+void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
+                       cost_t budget, Impurity impurityType) {
   // Corner cases:
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fit: Invalid "
@@ -86,8 +86,6 @@ void DecisionTree::fit(const Dataset &dataset, cost_t budget,
   // Calculate current prediction as the default
   prediction_t currentPrediction = dataset.getDefaultPrediction();
 
-  std::string attackerFile =
-      "/home/dg/source/repos/uni/treeant/data/attacks.json";
   Attacker attacker(dataset, attackerFile, budget);
   root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
                          currentPrediction, impurityType, constraints);
