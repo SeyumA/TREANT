@@ -1,11 +1,8 @@
-//
-// Created by dg on 14/01/20.
-//
-
 #include <cassert>
-#include <memory>
 #include <set>
 #include <stdexcept>
+
+#include <omp.h>
 
 #include "SplitOptimizer.h"
 
@@ -337,7 +334,8 @@ bool SplitOptimizer::optimizeGain(
     std::vector<Constraint> &constraintsLeft,
     std::vector<Constraint> &constraintsRight,
     std::unordered_map<index_t, cost_t> &costsLeft,
-    std::unordered_map<index_t, cost_t> &costsRight) const {
+    std::unordered_map<index_t, cost_t> &costsRight,
+    const std::size_t &threads) const {
 
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
@@ -348,7 +346,15 @@ bool SplitOptimizer::optimizeGain(
   bestGain = -1.0;
   indexes_t bestSplitUnknown;
 
-  for (const auto &splittingFeature : validFeatures) {
+  omp_set_num_threads(threads);
+  const int n = static_cast<int>(validFeatures.size());
+#pragma omp parallel for default(none) shared(                                 \
+    dataset, costs, attacker, validFeatures, validInstances, constraints,      \
+    currentPredictionScore, currentScore, bestGain, bestSplitFeatureId,        \
+    bestSplitValue, bestNextSplitValue, bestSplitLeft, bestSplitRight,         \
+    bestSplitUnknown, bestPredLeft, bestPredRight, bestSSEuma)
+  for (int i = 0; i < n; ++i) {
+    const auto splittingFeature = validFeatures[i];
     // Build a set of unique feature values
     bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
     const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
@@ -397,26 +403,29 @@ bool SplitOptimizer::optimizeGain(
           optimizeSSE(dataset.getLabels(), leftSplit, rightSplit, unknownSplit,
                       updatedConstraints, yHatLeft, yHatRight, sse);
 
-      if (optSuccess) {
-        const double currGain = currentScore - sse;
-        if (currGain > bestGain) {
-          bestGain = currGain;
-          bestSplitFeatureId = splittingFeature;
-          bestSplitValue = splittingValue;
-          bestNextSplitValue = std::next(it) == uniqueFeatureValues.end()
-                                   ? bestSplitValue
-                                   : *std::next(it);
-          bestSplitLeft = std::move(leftSplit);
-          bestSplitRight = std::move(rightSplit);
-          bestSplitUnknown = std::move(unknownSplit);
-          // TODO: work also with bestSplitUnknownFeatureId (update it here)
-          bestPredLeft = yHatLeft;
-          bestPredRight = yHatRight;
-          bestSSEuma = sse;
+#pragma omp critical
+      {
+        if (optSuccess) {
+          const double currGain = currentScore - sse;
+          if (currGain > bestGain) {
+            bestGain = currGain;
+            bestSplitFeatureId = splittingFeature;
+            bestSplitValue = splittingValue;
+            bestNextSplitValue = std::next(it) == uniqueFeatureValues.end()
+                                     ? bestSplitValue
+                                     : *std::next(it);
+            bestSplitLeft = std::move(leftSplit);
+            bestSplitRight = std::move(rightSplit);
+            bestSplitUnknown = std::move(unknownSplit);
+            // TODO: work also with bestSplitUnknownFeatureId (update it here)
+            bestPredLeft = yHatLeft;
+            bestPredRight = yHatRight;
+            bestSSEuma = sse;
+          }
         }
-      }
-    } // end loop on feature values
-  }   // end loop on valid features
+      }; // end of omp critical
+    }    // end loop on feature values
+  }      // end loop on valid features
 
   // If the bestGain is > 0.0 than there is an improvement on the solution
   // otherwise we return false

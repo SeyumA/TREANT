@@ -3,8 +3,8 @@
 #include <queue>
 
 #include <cstdio>
-#include <unistd.h>
 #include <omp.h>
+#include <unistd.h>
 
 #include "Dataset.h"
 #include "DecisionTree.h"
@@ -29,32 +29,46 @@ int main(int argc, char **argv) {
   std::string attackerFile, datasetFile;
   std::size_t maxDepth = defaultDepth; // default maxDepth value is 1
   cost_t budget = defaultBudget;       // default value is 0.0
+  int threads =
+      omp_get_max_threads(); // default value is the max number of threads
   // parse the arguments
   {
-    int dflag = 0;
+    double bflag = defaultBudget;
+    int dflag = defaultDepth;
+    int jflag = defaultThreads;
     int c;
     opterr = 0;
 
-    while ((c = getopt(argc, argv, "a:bdf:j")) != -1)
+    // -a and -f are mandatory
+    while ((c = getopt(argc, argv, "a:b:d:f:j:")) != -1)
       switch (c) {
       case 'a':
         attackerFile = std::string(optarg);
         break;
       case 'b':
-        budget = std::stod(std::string(optarg));
+        bflag = std::stod(std::string(optarg));
         if (budget < 0.0) {
           throw std::runtime_error(
               "Invalid budget argument: it must be >= 0.0");
         }
+        budget = bflag;
         break;
       case 'd':
         dflag = std::stoi(std::string(optarg));
         if (dflag < 0) {
           throw std::runtime_error("Invalid depth argument: it must be >= 0");
         }
+        maxDepth = dflag;
         break;
       case 'f':
         datasetFile = std::string(optarg);
+        break;
+      case 'j':
+        jflag = std::stoi(std::string(optarg));
+        if (jflag < 1) {
+          throw std::runtime_error("Invalid threads argument: it must be > 0");
+        }
+        threads = jflag;
         break;
       case '?':
         if (optopt == 'c')
@@ -74,7 +88,7 @@ int main(int argc, char **argv) {
   DecisionTree dt(maxDepth);
 
   const auto start = std::chrono::steady_clock::now();
-  dt.fit(dataset, attackerFile, budget, Impurity::SSE);
+  dt.fit(dataset, attackerFile, budget, Impurity::SSE, threads);
   const auto end = std::chrono::steady_clock::now();
 
   std::cout << "The decision tree is:" << std::endl << dt << std::endl;

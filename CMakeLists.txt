@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.1)
-project (treeant)
+cmake_minimum_required(VERSION 3.9)
+project (treeant LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -56,8 +56,9 @@ add_executable(${CMAKE_PROJECT_NAME} main.cpp ${SOURCES})
 
 include(FindPkgConfig)
 find_package(Nlopt REQUIRED)
+find_package(OpenMP REQUIRED)
 include_directories(${NLOPT_INCLUDE_DIR})
-target_link_libraries(${CMAKE_PROJECT_NAME} ${NLOPT_LIBRARY})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX ${NLOPT_LIBRARY})
 
 
 ## Add tests

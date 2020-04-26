@@ -35,7 +35,8 @@ public:
                double &bestSSEuma, std::vector<Constraint> &constraintsLeft,
                std::vector<Constraint> &constraintsRight,
                std::unordered_map<index_t, cost_t> &costsLeft,
-               std::unordered_map<index_t, cost_t> &costsRight
+               std::unordered_map<index_t, cost_t> &costsRight,
+               const std::size_t &threads
                // TODO: put the outputs in a struct
   ) const;
 
@@ -70,9 +71,9 @@ private:
   // Move the implementation to SplitOptimizer.cpp
   struct ExtraData {
     explicit ExtraData(const std::vector<label_t> &y,
-                               const indexes_t &leftIndexes,
-                               const indexes_t &rightIndexes,
-                               const indexes_t &unknownIndexes);
+                       const indexes_t &leftIndexes,
+                       const indexes_t &rightIndexes,
+                       const indexes_t &unknownIndexes);
 
     const std::vector<label_t> &y_;
     const indexes_t &leftIndexes_;
