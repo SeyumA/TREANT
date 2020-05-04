@@ -70,3 +70,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX ${NLOPT_L
 #
 #add_executable(test_utils_format tests/test_utils_format.cpp $<TARGET_OBJECTS:treeant_lib>)
 #add_test(NAME test_utils_format COMMAND test_utils_format)
+#
+#add_executable(test_utils_format tests/test_parallel.cpp $<TARGET_OBJECTS:treeant_lib>)
+#add_test(NAME test_parallel COMMAND test_parallel)

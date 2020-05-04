@@ -1,16 +1,20 @@
+#include <algorithm>
 #include <chrono>
+#include <future>
 #include <iostream>
 #include <queue>
-
 #include <cstdio>
-#include <omp.h>
 #include <unistd.h>
 
 #include "Dataset.h"
 #include "DecisionTree.h"
 #include "SplitOptimizer.h"
 
+
 int main(int argc, char **argv) {
+
+  calcMaxValueAndIndex((std::size_t)std::stoi(argv[1]));
+  return 0;
 
   if (argc < 2) {
     std::cout << "Usage: possible flags are:\n"
@@ -77,7 +81,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Unknown option '-%c'.\n", optopt);
           }
           throw std::runtime_error(
-                "Unknown option character, valids are: -a, -b, -d, -f, -j");
+              "Unknown option character, valids are: -a, -b, -d, -f, -j");
         default:
           abort();
         }
