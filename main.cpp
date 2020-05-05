@@ -13,9 +13,6 @@
 
 int main(int argc, char **argv) {
 
-  calcMaxValueAndIndex((std::size_t)std::stoi(argv[1]));
-  return 0;
-
   if (argc < 2) {
     std::cout << "Usage: possible flags are:\n"
               << "-a <name of the attacker json file>, "
