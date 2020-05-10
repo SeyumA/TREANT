@@ -43,13 +43,12 @@ SplitOptimizer::SplitOptimizer(Impurity impurityType) {
   }
 }
 
-void SplitOptimizer::simulateSplit(
+std::tuple<indexes_t, indexes_t, indexes_t> SplitOptimizer::simulateSplit(
     const Dataset &dataset, const indexes_t &validInstances,
     const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
-    const feature_t &splittingValue, const index_t &splittingFeature,
-    // outputs
-    indexes_t &leftSplit, indexes_t &rightSplit,
-    indexes_t &unknownSplit) const {
+    const feature_t &splittingValue, const index_t &splittingFeature) const {
+
+  indexes_t leftSplit, rightSplit, unknownSplit;
 
   // Prepare the output
   if (!(leftSplit.empty() && rightSplit.empty() && unknownSplit.empty())) {
@@ -100,6 +99,7 @@ void SplitOptimizer::simulateSplit(
       unknownSplit.push_back(i);
     }
   } // end of loop over instances
+  return {leftSplit, rightSplit, unknownSplit};
 }
 
 double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
@@ -373,9 +373,9 @@ bool SplitOptimizer::optimizeGain(
 
       // find the best split with this value
       // line 1169 of the python code it is called self.__simulate_split
-      indexes_t leftSplit, rightSplit, unknownSplit;
-      simulateSplit(dataset, validInstances, attacker, costs, splittingValue,
-                    splittingFeature, leftSplit, rightSplit, unknownSplit);
+      const auto [leftSplit, rightSplit, unknownSplit] =
+          simulateSplit(dataset, validInstances, attacker, costs,
+                        splittingValue, splittingFeature);
       // Propagate the constraints (see lines 1177-1190)
       std::vector<Constraint> updatedConstraints;
       for (const auto &c : constraints) {

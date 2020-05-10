@@ -61,12 +61,12 @@ private:
 
   // Returns left, unknown, right
   // TODO: this code can go easily a method in the FeatureColumn class
-  void simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
-                     const Attacker &attacker,
-                     const std::unordered_map<index_t, cost_t> &costs,
-                     const feature_t &splittingValue,
-                     const index_t &splittingFeature, indexes_t &leftSplit,
-                     indexes_t &rightSplit, indexes_t &unknownSplit) const;
+  [[nodiscard]] std::tuple<indexes_t, indexes_t, indexes_t>
+  simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
+                const Attacker &attacker,
+                const std::unordered_map<index_t, cost_t> &costs,
+                const feature_t &splittingValue,
+                const index_t &splittingFeature) const;
 
   // Move the implementation to SplitOptimizer.cpp
   struct ExtraData {
