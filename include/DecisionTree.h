@@ -50,7 +50,7 @@ private:
                        const std::unordered_map<index_t, cost_t> &costs,
                        const prediction_t &currentPrediction,
                        Impurity impurityType,
-                       const std::vector<Constraint> &constraints, const std::size_t& threads);
+                       const std::vector<Constraint> &constraints);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);

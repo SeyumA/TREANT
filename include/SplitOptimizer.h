@@ -35,8 +35,7 @@ public:
                double &bestSSEuma, std::vector<Constraint> &constraintsLeft,
                std::vector<Constraint> &constraintsRight,
                std::unordered_map<index_t, cost_t> &costsLeft,
-               std::unordered_map<index_t, cost_t> &costsRight,
-               const std::size_t &threads
+               std::unordered_map<index_t, cost_t> &costsRight
                // TODO: put the outputs in a struct
   ) const;
 

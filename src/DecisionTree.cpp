@@ -5,6 +5,7 @@
 #include <functional>
 #include <numeric>
 #include <stack>
+#include <omp.h>
 
 #include "Attacker.h"
 #include "Constraint.h"
@@ -62,6 +63,7 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
     throw std::runtime_error(
         "Invalid threads parameter in fit function, it must be > 0");
   }
+  omp_set_num_threads(threads);
   // Corner cases:
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fit: Invalid "
@@ -92,7 +94,7 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
 
   Attacker attacker(dataset, attackerFile, budget);
   root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
-                         currentPrediction, impurityType, constraints, threads);
+                         currentPrediction, impurityType, constraints);
 
   // height_ is updated in the fitRecursively method
 }
@@ -104,7 +106,7 @@ Node *DecisionTree::fitRecursively(
     const indexes_t &validFeatures, std::size_t currHeight,
     const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
     const prediction_t &nodePrediction, Impurity impurityType,
-    const std::vector<Constraint> &constraints, const std::size_t& threads) {
+    const std::vector<Constraint> &constraints) {
 
   // As input there is a node prediction (floating point)
   // so this function always returns a new Node
@@ -156,7 +158,7 @@ Node *DecisionTree::fitRecursively(
       currentPredictionScore, bestGain, bestSplitLeftFeatureId,
       bestSplitRightFeatureId, bestSplitFeatureId, bestSplitValue,
       bestNextSplitValue, bestPredLeft, bestPredRight, bestSSEuma,
-      constraintsLeft, constraintsRight, costsLeft, costsRight, threads);
+      constraintsLeft, constraintsRight, costsLeft, costsRight);
 
   if (optimizerSuccess) {
     // Build the node to be returned
@@ -189,13 +191,13 @@ Node *DecisionTree::fitRecursively(
     Node *leftNode =
         fitRecursively(dataset, bestSplitLeftFeatureId, validFeaturesDownstream,
                        currHeight + 1, attacker, costsLeft, bestPredLeft,
-                       impurityType, constraintsLeft, threads);
+                       impurityType, constraintsLeft);
     ret->setLeft(leftNode);
     // Set the right node
     Node *rightNode = fitRecursively(dataset, bestSplitRightFeatureId,
                                      validFeaturesDownstream, currHeight + 1,
                                      attacker, costsRight, bestPredRight,
-                                     impurityType, constraintsRight, threads);
+                                     impurityType, constraintsRight);
     ret->setRight(rightNode);
 
     // Update the decision tree height if necessary

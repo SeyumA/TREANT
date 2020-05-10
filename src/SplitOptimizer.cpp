@@ -334,8 +334,7 @@ bool SplitOptimizer::optimizeGain(
     std::vector<Constraint> &constraintsLeft,
     std::vector<Constraint> &constraintsRight,
     std::unordered_map<index_t, cost_t> &costsLeft,
-    std::unordered_map<index_t, cost_t> &costsRight,
-    const std::size_t &threads) const {
+    std::unordered_map<index_t, cost_t> &costsRight) const {
 
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
@@ -346,7 +345,6 @@ bool SplitOptimizer::optimizeGain(
   bestGain = -1.0;
   indexes_t bestSplitUnknown;
 
-  omp_set_num_threads(threads);
   const int n = static_cast<int>(validFeatures.size());
 #pragma omp parallel for default(none) shared(                                 \
     dataset, costs, attacker, validFeatures, validInstances, constraints,      \
@@ -373,7 +371,7 @@ bool SplitOptimizer::optimizeGain(
 
       // find the best split with this value
       // line 1169 of the python code it is called self.__simulate_split
-      const auto [leftSplit, rightSplit, unknownSplit] =
+      auto [leftSplit, rightSplit, unknownSplit] =
           simulateSplit(dataset, validInstances, attacker, costs,
                         splittingValue, splittingFeature);
       // Propagate the constraints (see lines 1177-1190)
@@ -403,33 +401,40 @@ bool SplitOptimizer::optimizeGain(
           optimizeSSE(dataset.getLabels(), leftSplit, rightSplit, unknownSplit,
                       updatedConstraints, yHatLeft, yHatRight, sse);
 
+      if (optSuccess) {
+        const double currGain = currentScore - sse;
+        if (currGain > bestGain) {
+
 #pragma omp critical
-      {
-        if (optSuccess) {
-          const double currGain = currentScore - sse;
-          if (currGain > bestGain) {
+          {
             bestGain = currGain;
             bestSplitFeatureId = splittingFeature;
             bestSplitValue = splittingValue;
             bestNextSplitValue = std::next(it) == uniqueFeatureValues.end()
                                      ? bestSplitValue
                                      : *std::next(it);
-            bestSplitLeft = std::move(leftSplit);
-            bestSplitRight = std::move(rightSplit);
-            bestSplitUnknown = std::move(unknownSplit);
             // TODO: work also with bestSplitUnknownFeatureId (update it here)
             bestPredLeft = yHatLeft;
             bestPredRight = yHatRight;
             bestSSEuma = sse;
-          }
+          } // end of omp critical
         }
-      }; // end of omp critical
-    }    // end loop on feature values
-  }      // end loop on valid features
+      }
+    } // end loop on feature values
+  }   // end loop on valid features
 
   // If the bestGain is > 0.0 than there is an improvement on the solution
   // otherwise we return false
   if (bestGain > 0.0) {
+    // Recover the best split: bestSplitLeft, bestSplitRight, bestSplitUnknown
+    {
+      auto [leftSplit, rightSplit, unknownSplit] =
+      simulateSplit(dataset, validInstances, attacker, costs,
+                    bestSplitValue, bestSplitFeatureId);
+      bestSplitLeft = std::move(leftSplit);
+      bestSplitRight = std::move(rightSplit);
+      bestSplitUnknown = std::move(unknownSplit);
+    }
     // Update constraints (see line 1289 of python code)
     if (!(constraintsLeft.empty() && constraintsRight.empty())) {
       throw std::runtime_error(
