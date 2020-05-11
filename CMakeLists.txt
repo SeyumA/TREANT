@@ -6,15 +6,15 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 enable_testing()
 
 IF (NOT WIN32)
-    if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE Release)
+    IF(NOT CMAKE_BUILD_TYPE)
+        SET(CMAKE_BUILD_TYPE Release)
     endif(NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 
-set(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD 17)
 
 IF (WIN32)
-    set(CMAKE_CXX_FLAGS "/Zi /EHsc /MP /Wall /W4")
+    SET(CMAKE_CXX_FLAGS "/Zi /EHsc /MP /Wall /W4")
 ELSE ()
     SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpedantic -pthread -fPIC -march=native -lm")
     SET(CMAKE_CXX_FLAGS_RELEASE "-Werror -O3 -s")
@@ -51,14 +51,22 @@ set(SOURCES
         src/Constraint.cpp)
 
 
-# Build the executable in the main
-add_executable(${CMAKE_PROJECT_NAME} main.cpp ${SOURCES})
+SET(TREANT_LIB treantLib)
+
+add_library(${TREANT_LIB}
+        SHARED
+        ${SOURCES}
+        )
 
 include(FindPkgConfig)
 find_package(Nlopt REQUIRED)
 find_package(OpenMP REQUIRED)
 include_directories(${NLOPT_INCLUDE_DIR})
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX ${NLOPT_LIBRARY})
+target_link_libraries(${TREANT_LIB} PRIVATE OpenMP::OpenMP_CXX ${NLOPT_LIBRARY})
+
+# Build the executable in the main
+add_executable(${CMAKE_PROJECT_NAME} main.cpp)
+target_link_libraries(${CMAKE_PROJECT_NAME} ${TREANT_LIB})
 
 
 ## Add tests

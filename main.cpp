@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <chrono>
-#include <future>
 #include <iostream>
 #include <queue>
 #include <cstdio>
@@ -31,7 +30,7 @@ int main(int argc, char **argv) {
     std::string attackerFile, datasetFile;
     std::size_t maxDepth = 1; // default maxDepth value is 1
     cost_t budget = 0.0f;     // default value is 0.0
-    int threads = 1; // default value is 1
+    int threads = 1; // default value is 1, sequential execution
     // parse the arguments
     {
       double bflag = budget;
