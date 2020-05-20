@@ -1,4 +1,5 @@
 #include <cassert>
+#include <future>
 #include <set>
 #include <stdexcept>
 
@@ -12,6 +13,16 @@
 // TODO: delete this include (only for debug purposes)
 #include <iomanip>
 #include <iostream>
+
+struct OptimizeOutput {
+  gain_t bestGain;
+  index_t bestSplitFeatureId;
+  split_value_t bestSplitValue;
+  split_value_t bestNextSplitValue;
+  prediction_t bestPredLeft;
+  prediction_t bestPredRight;
+  double bestSSEuma;
+};
 
 SplitOptimizer::SplitOptimizer(Impurity impurityType) {
 
@@ -325,6 +336,7 @@ bool SplitOptimizer::optimizeGain(
     const std::unordered_map<index_t, cost_t> &costs,
     const std::vector<Constraint> &constraints, const double &currentScore,
     const double &currentPredictionScore, // (used by)/(forward to) optimizeSSE
+    const unsigned& numThreads,
     // outputs
     // TODO: better put this in 2 structs (one left, one right) and return it
     gain_t &bestGain, indexes_t &bestSplitLeft, indexes_t &bestSplitRight,
@@ -340,97 +352,151 @@ bool SplitOptimizer::optimizeGain(
   // the validInstances vector can not be empty.
   assert(!validInstances.empty());
 
+  const auto optimizeOnSubset =
+      [this](const Dataset &dataset,
+             const std::unordered_map<index_t, cost_t> &costs,
+             const Attacker &attacker, const indexes_t &validFeaturesSubset,
+             const indexes_t &validInstances,
+             const std::vector<Constraint> &constraints,
+             const double &currentScore,
+             const double &currentPredictionScore) -> OptimizeOutput {
+    auto ret = OptimizeOutput();
+    ret.bestGain = -1.0f;
+    ret.bestSplitFeatureId = *validFeaturesSubset.begin();
+    ret.bestSplitValue = 0.0f;
+    ret.bestNextSplitValue = 0.0f;
+    ret.bestPredLeft = 0.0f;
+    ret.bestPredRight = 0.0f;
+    ret.bestSSEuma = 0.0f;
+
+    for (const auto &splittingFeature : validFeaturesSubset) {
+      // Build a set of unique feature values
+      bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
+      const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
+      // If not numerical the order can change with respect of dictionary
+      // "feature_map" in python for example ("Male":5, "Female":10) in
+      // python ->
+      // ("Female", "Male") but here we maintain the original order: (5,
+      // 10), in practise does not change anything
+      const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
+                                                    currentColumn.end());
+
+      for (auto it = uniqueFeatureValues.begin();
+           it != uniqueFeatureValues.end(); ++it) {
+        // Using the iterator in order to evaluate next value (see
+        // bestNextSplitValue in the code below)
+        const auto &splittingValue = *it;
+
+        // find the best split with this value
+        // line 1169 of the python code it is called self.__simulate_split
+        auto [leftSplit, rightSplit, unknownSplit] =
+            simulateSplit(dataset, validInstances, attacker, costs,
+                          splittingValue, splittingFeature);
+        // Propagate the constraints (see lines 1177-1190)
+        std::vector<Constraint> updatedConstraints;
+        for (const auto &c : constraints) {
+          // This part can be optimized: do we need all the Constraint
+          // object
+          const auto cLeft = c.propagateLeft(attacker, splittingFeature,
+                                             splittingValue, isNumerical);
+          const auto cRight = c.propagateRight(attacker, splittingFeature,
+                                               splittingValue, isNumerical);
+          if (cLeft.has_value() && cRight.has_value()) {
+            updatedConstraints.push_back(c);
+            updatedConstraints.back().setDirection('U');
+          } else if (cLeft.has_value()) {
+            updatedConstraints.push_back(c);
+            updatedConstraints.back().setDirection('L');
+          } else if (cRight.has_value()) {
+            updatedConstraints.push_back(c);
+            updatedConstraints.back().setDirection('R');
+          }
+        }
+
+        feature_t yHatLeft = currentPredictionScore;
+        feature_t yHatRight = currentPredictionScore;
+        feature_t sse = 0.0;
+        bool optSuccess = optimizeSSE(
+            dataset.getLabels(), leftSplit, rightSplit, unknownSplit,
+            updatedConstraints, yHatLeft, yHatRight, sse);
+
+        if (optSuccess) {
+          const double currGain = currentScore - sse;
+          if (currGain > ret.bestGain) {
+            ret.bestGain = currGain;
+            ret.bestSplitFeatureId = splittingFeature;
+            ret.bestSplitValue = splittingValue;
+            ret.bestNextSplitValue = std::next(it) == uniqueFeatureValues.end()
+                                         ? ret.bestSplitValue
+                                         : *std::next(it);
+            ret.bestPredLeft = yHatLeft;
+            ret.bestPredRight = yHatRight;
+            ret.bestSSEuma = sse;
+          }
+        }
+      } // end loop on feature values
+    }   // end loop on valid features
+    return ret;
+  };
+
+  // Split in subsets the features
+  const std::vector<std::vector<index_t>> batches =
+      [](const unsigned &numThreads, const indexes_t &validFeatures) {
+        std::vector<std::vector<index_t>> ret;
+        if (!numThreads) {
+          throw std::runtime_error("Invalid number of threads");
+        } else if (numThreads == 1) {
+          ret.emplace_back(validFeatures.begin(), validFeatures.end());
+        } else if (numThreads < validFeatures.size()) {
+          unsigned chunkSize = validFeatures.size() / numThreads;
+          for (unsigned i = 0; i < numThreads; ++i) {
+            auto start = validFeatures.begin() + (chunkSize * i);
+            auto end =
+                (i == numThreads - 1) ? validFeatures.end() : start + chunkSize;
+            ret.emplace_back(start, end);
+          }
+        } else { // one thread each feature
+          for (const auto& f : validFeatures) {
+            ret.push_back({f});
+          }
+        }
+        return ret;
+      }(numThreads, validFeatures);
+
+  std::vector<std::future<OptimizeOutput>> batchResults(numThreads);
+  for (std::size_t i = 0; i < batches.size(); ++i) {
+    batchResults[i] =
+        std::async(std::launch::async, optimizeOnSubset, dataset, costs,
+                   attacker, batches[i], validInstances, constraints,
+                   currentScore, currentPredictionScore);
+  }
+
   // Default value of the gain, returns how much we can improve the current
   // score.
-  bestGain = -1.0;
-  indexes_t bestSplitUnknown;
-
-  const int n = static_cast<int>(validFeatures.size());
-#pragma omp parallel for default(none) shared(                                 \
-    dataset, costs, attacker, validFeatures, validInstances, constraints,      \
-    currentPredictionScore, currentScore, bestGain, bestSplitFeatureId,        \
-    bestSplitValue, bestNextSplitValue, bestSplitLeft, bestSplitRight,         \
-    bestSplitUnknown, bestPredLeft, bestPredRight, bestSSEuma)
-  for (int i = 0; i < n; ++i) {
-    const auto splittingFeature = validFeatures[i];
-    // Build a set of unique feature values
-    bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-    const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
-    // If not numerical the order can change with respect of dictionary
-    // "feature_map" in python for example ("Male":5, "Female":10) in python ->
-    // ("Female", "Male") but here we maintain the original order: (5, 10), in
-    // practise does not change anything
-    const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
-                                                  currentColumn.end());
-
-    for (auto it = uniqueFeatureValues.begin(); it != uniqueFeatureValues.end();
-         ++it) {
-      // Using the iterator in order to evaluate next value (see
-      // bestNextSplitValue in the code below)
-      const auto &splittingValue = *it;
-
-      // find the best split with this value
-      // line 1169 of the python code it is called self.__simulate_split
-      auto [leftSplit, rightSplit, unknownSplit] =
-          simulateSplit(dataset, validInstances, attacker, costs,
-                        splittingValue, splittingFeature);
-      // Propagate the constraints (see lines 1177-1190)
-      std::vector<Constraint> updatedConstraints;
-      for (const auto &c : constraints) {
-        // This part can be optimized: do we need all the Constraint object
-        const auto cLeft = c.propagateLeft(attacker, splittingFeature,
-                                           splittingValue, isNumerical);
-        const auto cRight = c.propagateRight(attacker, splittingFeature,
-                                             splittingValue, isNumerical);
-        if (cLeft.has_value() && cRight.has_value()) {
-          updatedConstraints.push_back(c);
-          updatedConstraints.back().setDirection('U');
-        } else if (cLeft.has_value()) {
-          updatedConstraints.push_back(c);
-          updatedConstraints.back().setDirection('L');
-        } else if (cRight.has_value()) {
-          updatedConstraints.push_back(c);
-          updatedConstraints.back().setDirection('R');
-        }
-      }
-
-      feature_t yHatLeft = currentPredictionScore;
-      feature_t yHatRight = currentPredictionScore;
-      feature_t sse = 0.0;
-      bool optSuccess =
-          optimizeSSE(dataset.getLabels(), leftSplit, rightSplit, unknownSplit,
-                      updatedConstraints, yHatLeft, yHatRight, sse);
-
-      if (optSuccess) {
-        const double currGain = currentScore - sse;
-        if (currGain > bestGain) {
-
-#pragma omp critical
-          {
-            bestGain = currGain;
-            bestSplitFeatureId = splittingFeature;
-            bestSplitValue = splittingValue;
-            bestNextSplitValue = std::next(it) == uniqueFeatureValues.end()
-                                     ? bestSplitValue
-                                     : *std::next(it);
-            // TODO: work also with bestSplitUnknownFeatureId (update it here)
-            bestPredLeft = yHatLeft;
-            bestPredRight = yHatRight;
-            bestSSEuma = sse;
-          } // end of omp critical
-        }
-      }
-    } // end loop on feature values
-  }   // end loop on valid features
+  bestGain = -1.0f;
+  // Reduction
+  for (auto& fut : batchResults) {
+    const auto result = fut.get();
+    if (result.bestGain > bestGain) {
+      bestGain = result.bestGain;
+      bestSplitFeatureId = result.bestSplitFeatureId;
+      bestSplitValue = result.bestSplitValue;
+      bestNextSplitValue = result.bestNextSplitValue;;
+      bestPredLeft = result.bestPredLeft;
+      bestPredRight = result.bestPredRight;
+      bestSSEuma = result.bestSSEuma;
+    }
+  }
 
   // If the bestGain is > 0.0 than there is an improvement on the solution
   // otherwise we return false
+  indexes_t bestSplitUnknown;
   if (bestGain > 0.0) {
     // Recover the best split: bestSplitLeft, bestSplitRight, bestSplitUnknown
     {
       auto [leftSplit, rightSplit, unknownSplit] =
-      simulateSplit(dataset, validInstances, attacker, costs,
-                    bestSplitValue, bestSplitFeatureId);
+          simulateSplit(dataset, validInstances, attacker, costs,
+                        bestSplitValue, bestSplitFeatureId);
       bestSplitLeft = std::move(leftSplit);
       bestSplitRight = std::move(rightSplit);
       bestSplitUnknown = std::move(unknownSplit);

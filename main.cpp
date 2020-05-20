@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <iostream>
 #include <queue>
-#include <cstdio>
 #include <unistd.h>
 
 #include "Dataset.h"
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     std::string attackerFile, datasetFile;
     std::size_t maxDepth = 1; // default maxDepth value is 1
     cost_t budget = 0.0f;     // default value is 0.0
-    int threads = 1; // default value is 1, sequential execution
+    int threads = 1;          // default value is 1, sequential execution
     // parse the arguments
     {
       double bflag = budget;
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   }(argc, argv);
 
   Dataset dataset(datasetFile);
-  std::cout << "The dataset size is:" <<  dataset.size() << std::endl;
+  std::cout << "The dataset size is:" << dataset.size() << std::endl;
   DecisionTree dt(maxDepth);
 
   const auto start = std::chrono::steady_clock::now();

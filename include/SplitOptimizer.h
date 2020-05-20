@@ -27,6 +27,7 @@ public:
                const std::unordered_map<index_t, cost_t> &costs,
                const std::vector<Constraint> &constraints,
                const double &currentScore, const double &currentPredictionScore,
+               const unsigned& numThreads,
                // outputs
                gain_t &bestGain, indexes_t &bestSplitLeft,
                indexes_t &bestSplitRight, index_t &bestSplitFeatureId,

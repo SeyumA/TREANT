@@ -60,9 +60,11 @@ add_library(${TREANT_LIB}
 
 include(FindPkgConfig)
 find_package(Nlopt REQUIRED)
-find_package(OpenMP REQUIRED)
 include_directories(${NLOPT_INCLUDE_DIR})
-target_link_libraries(${TREANT_LIB} PRIVATE OpenMP::OpenMP_CXX ${NLOPT_LIBRARY})
+target_link_libraries(${TREANT_LIB}
+        PRIVATE
+        ${NLOPT_LIBRARY}
+        )
 
 # Build the executable in the main
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
