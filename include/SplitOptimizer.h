@@ -17,7 +17,7 @@
 class SplitOptimizer {
 
 public:
-  explicit SplitOptimizer(Impurity impurityType);
+  explicit SplitOptimizer(Impurity impurityType = Impurity::SSE);
 
   // It returns the best splitting feature and the best splitting value
   // The costs are maps because are always subsets

@@ -70,6 +70,8 @@ target_link_libraries(${TREANT_LIB}
 add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${TREANT_LIB})
 
+# python interface and sources
+add_subdirectory(py_decision_tree)
 
 ## Add tests
 #add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
