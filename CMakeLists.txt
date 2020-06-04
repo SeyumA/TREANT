@@ -3,7 +3,7 @@ project (treeant LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-enable_testing()
+#enable_testing()
 
 IF (NOT WIN32)
     IF(NOT CMAKE_BUILD_TYPE)

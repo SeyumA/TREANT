@@ -1,18 +1,19 @@
 #include "cpp_implementation.hpp"
 
 // External files
-#include "SplitOptimizer.h"
+#include "DecisionTree.h"
 
 #include <cassert>
-//Just for logging
+// Just for logging
 #include <iostream>
 
-PyDecisionTree::PyDecisionTree(const char *datasetFile) : dataset_(Dataset(datasetFile)){
+PyDecisionTree::PyDecisionTree(const char *datasetFile)
+    : dataset_(Dataset(datasetFile)) {
   balance = 0.0;
-  
+
   // Hardcoded for now
   maxDepth_ = 4;
-  
+
   is_initialized = true;
 }
 
@@ -30,10 +31,18 @@ void PyDecisionTree::fit() {
   assert(is_initialized);
   // working with std::vector
   // vec.resize(10);
-  
-  std::cout << "The dataset owned is:" << std::endl << dataset_ << "\n\n";
-  
-  SplitOptimizer splitOptimizer;
-  std::cout << "TODO: Using nlopt:" << std::endl;
-  //splitOptimizer.perform();
+
+  // Hardcoded, must be moved as arguments
+  const std::string attackerFile =
+      "/home/dg/source/repos/uni/treeant/data/attacks.json";
+  int budget = 0;
+  int threads = 1;
+
+  // std::cout << "The dataset owned is:" << std::endl << dataset_ << "\n\n";
+
+  DecisionTree dt(maxDepth_);
+
+  std::cout << "Fitting a DecisionTree. TODO: save the root pointer\n";
+  dt.fit(dataset_, attackerFile, budget, threads);
+  std::cout << "The decision tree is:\n" << dt << std::endl;
 }
