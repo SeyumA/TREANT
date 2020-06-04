@@ -47,6 +47,6 @@ using double_vector_t = std::vector<double_feature_t>;
 // SplitOptimizer types
 using gain_t = double;
 
-enum class Impurity { GINI, SSE, MSE, ENTROPY };
+enum class Impurity { GINI = 0x0, SSE, MSE, ENTROPY };
 
 #endif // TREEANT_TYPES_H
