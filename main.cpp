@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   DecisionTree dt(maxDepth);
 
   const auto start = std::chrono::steady_clock::now();
-  dt.fit(dataset, attackerFile, budget, Impurity::SSE, threads);
+  dt.fit(dataset, attackerFile, budget, threads, Impurity::SSE);
   const auto end = std::chrono::steady_clock::now();
 
   std::cout << "The decision tree is:" << std::endl << dt << std::endl;

@@ -31,7 +31,8 @@ public:
   [[nodiscard]] std::size_t getHeight() const;
 
   void fit(const Dataset &dataset, const std::string &attackerFile,
-           cost_t budget, Impurity impurityType, const unsigned &threads);
+           cost_t budget, const unsigned &threads,
+           const Impurity impurityType = Impurity::SSE);
 
   [[nodiscard]] bool isTrained() const;
 

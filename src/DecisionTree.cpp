@@ -57,7 +57,7 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
 }
 
 void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
-                       cost_t budget, Impurity impurityType, const unsigned& threads) {
+                       cost_t budget, const unsigned& threads, const Impurity impurityType) {
   if (threads < 1) {
     throw std::runtime_error(
         "Invalid threads parameter in fit function, it must be > 0");
