@@ -56,7 +56,7 @@ public:
 
   [[nodiscard]] prediction_t getDefaultPrediction() const;
 
-  friend std::ostream &operator<<(std::ostream &os, const Dataset &dt);
+  friend std::ostream &operator<<(std::ostream &os, const Dataset &ds);
 
 private:
   std::vector<std::string> featureNames_;
@@ -69,6 +69,6 @@ private:
   std::vector<label_t> labelVector_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Dataset &dt);
+std::ostream &operator<<(std::ostream &os, const Dataset &ds);
 
 #endif // TREEANT_DATASET_H
