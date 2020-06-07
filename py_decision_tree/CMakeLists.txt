@@ -1,10 +1,14 @@
-
 add_library(py_decision_tree
   SHARED
     implementation/c_cpp_interface.cpp
     implementation/cpp_implementation.cpp
     ${CMAKE_SOURCE_DIR}/src/SplitOptimizer.cpp
     ${CMAKE_SOURCE_DIR}/src/Dataset.cpp
+    ${CMAKE_SOURCE_DIR}/src/DecisionTree.cpp
+    ${CMAKE_SOURCE_DIR}/src/Attacker.cpp
+    ${CMAKE_SOURCE_DIR}/src/Constraint.cpp
+    ${CMAKE_SOURCE_DIR}/src/FeatureColumn.cpp
+    ${CMAKE_SOURCE_DIR}/src/Node.cpp
     ${CMAKE_SOURCE_DIR}/src/utils.cpp
   )
 

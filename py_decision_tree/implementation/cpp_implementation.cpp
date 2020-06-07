@@ -1,19 +1,14 @@
 #include "cpp_implementation.hpp"
 
 // External files
-#include "DecisionTree.h"
+#include "Dataset.h"
 
 #include <cassert>
-// Just for logging
+//Just for logging
 #include <iostream>
 
-PyDecisionTree::PyDecisionTree(const char *datasetFile)
-    : dataset_(Dataset(datasetFile)) {
-  balance = 0.0;
-
-  // Hardcoded for now
-  maxDepth_ = 4;
-
+PyDecisionTree::PyDecisionTree(unsigned int maxDepth) :
+    maxDepth_(maxDepth), decisionTree_(DecisionTree(maxDepth, false)) {
   is_initialized = true;
 }
 
@@ -24,25 +19,23 @@ PyDecisionTree::~PyDecisionTree() {
 
 bool PyDecisionTree::predict() const {
   assert(is_initialized);
-  return vec.size() > 0;
+  return false;
 }
 
-void PyDecisionTree::fit() {
+void PyDecisionTree::fit(const char *datasetFile,
+                         const char *attackerFile,
+                         const double budget,
+                         const unsigned threads) {
   assert(is_initialized);
-  // working with std::vector
-  // vec.resize(10);
+  
+  Dataset ds(datasetFile);
+  decisionTree_.fit(ds, attackerFile, budget, threads);
+}
 
-  // Hardcoded, must be moved as arguments
-  const std::string attackerFile =
-      "/home/dg/source/repos/uni/treeant/data/attacks.json";
-  int budget = 0;
-  int threads = 1;
+bool PyDecisionTree::is_trained() const {
+  return decisionTree_.isTrained();
+}
 
-  // std::cout << "The dataset owned is:" << std::endl << dataset_ << "\n\n";
-
-  DecisionTree dt(maxDepth_);
-
-  std::cout << "Fitting a DecisionTree. TODO: save the root pointer\n";
-  dt.fit(dataset_, attackerFile, budget, threads);
-  std::cout << "The decision tree is:\n" << dt << std::endl;
+void PyDecisionTree::pretty_print() const {
+  std::cout << decisionTree_ << std::endl;
 }

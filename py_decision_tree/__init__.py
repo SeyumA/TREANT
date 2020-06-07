@@ -49,12 +49,16 @@ _lib = get_lib_handle(definitions=['-DPY_DECISION_TREE_API=', '-DPY_DECISION_TRE
 new = _lib.py_decision_tree_new
 free = _lib.py_decision_tree_free
 fit = _lib.py_decision_tree_fit
-predict = _lib.py_decision_treet_predict
+predict = _lib.py_decision_tree_predict
+is_trained = _lib.py_decision_tree_is_trained
+pretty_print = _lib.py_decision_tree_pretty_print
 
 __all__ = [
     '__version__',
     'new',
     'free',
     'fit',
-    'predict'
+    'predict',
+    'is_trained',
+    'pretty_print'
 ]

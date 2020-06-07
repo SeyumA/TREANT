@@ -1,22 +1,24 @@
 #pragma once
 
-#include "Dataset.h"
-#include <vector>
+#include "DecisionTree.h"
 
 class PyDecisionTree {
 public:
-  PyDecisionTree(const char *datasetFile);
+  PyDecisionTree(unsigned int maxDepth);
   ~PyDecisionTree();
 
   bool predict() const;
-  void fit();
-
+  void fit(const char *datasetFile,
+           const char *attackerFile,
+           const double budget,
+           const unsigned threads);
+  bool is_trained() const;
+  void pretty_print() const;
+  
 private:
 
-  Dataset dataset_;
   int maxDepth_;
+  DecisionTree decisionTree_;
 
-  std::vector<int> vec;
-  double balance;
   bool is_initialized;
 };

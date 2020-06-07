@@ -1,17 +1,25 @@
 import os
 import sys
-#sys.path.append(os.getenv('ACCOUNT_MODULE_PATH'))
 
 import py_decision_tree  # isort: skip
 
-filePath = "/home/dg/source/repos/uni/treeant/data/test_training_set_n-1000.txt"
-# .encode('ascii') is necessary in python3 or use b"..." to transform to binary
-account1 = account.new(filePath.encode('ascii'))
+#filePath = "/home/dg/source/repos/uni/treeant/data/test_training_set_n-1000.txt"
+# .encode('ascii') is necessary in python3
+maxDepth = 4;
+py_dt = py_decision_tree.new(maxDepth)
 
-# TODO: test also predict function
-#assert(account.predict(account1) == False)
+assert(py_decision_tree.predict(py_dt) == False)
 
-account.fit(account1)
+# Get the location of the current .py file
+cwd = os.path.dirname(os.path.abspath(__file__))
+datasetFile = (cwd + "/data/test_training_set_n-1000.txt").encode('ascii')
+attackerFile = (cwd + "/data/attacks.json").encode('ascii')
+budget = 0
+threads = 4
+py_decision_tree.fit(py_dt, datasetFile, attackerFile, budget, threads)
 
-account.free(account1)
+assert py_decision_tree.is_trained(py_dt) == True
+print("The decision tree is trained:")
+py_decision_tree.pretty_print(py_dt)
 
+py_decision_tree.free(py_dt)

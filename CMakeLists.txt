@@ -73,7 +73,17 @@ target_link_libraries(${CMAKE_PROJECT_NAME} ${TREANT_LIB})
 # python interface and sources
 add_subdirectory(py_decision_tree)
 
-## Add tests
+# Add tests
+add_test(
+  NAME
+    python_test
+  COMMAND
+    ${CMAKE_COMMAND} -E env PY_DECISION_TREE_HEADER_FILE=${CMAKE_CURRENT_SOURCE_DIR}/py_decision_tree/py_decision_tree.h
+                            PY_DECISION_TREE_LIBRARY_FILE=${CMAKE_CURRENT_BINARY_DIR}/py_decision_tree/libpy_decision_tree.so
+    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test.py
+  )
+
+
 #add_executable(test_opt_parser tests/test_opt_parser.cpp $<TARGET_OBJECTS:treeant_lib>)
 #add_test(NAME test_opt_parser COMMAND test_opt_parser)
 #
