@@ -113,6 +113,100 @@ std::tuple<indexes_t, indexes_t, indexes_t> SplitOptimizer::simulateSplit(
   return {leftSplit, rightSplit, unknownSplit};
 }
 
+std::tuple<indexes_t, indexes_t, indexes_t, bool>
+SplitOptimizer::simulateSplitICML2019(
+    const Dataset &dataset, const indexes_t &validInstances,
+    const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
+    const feature_t &splittingValue, const index_t &splittingFeature,
+    label_t &yHatLeft, label_t &yHatRight, gain_t &sse) const {
+
+  indexes_t leftSplit, rightSplit, unknownSplitLeft, unknownSplitRight;
+  bool isSplitSuccessful = false;
+
+  // Prepare the output
+  if (!(leftSplit.empty() && rightSplit.empty() && unknownSplitLeft.empty() &&
+        unknownSplitRight.empty())) {
+    throw std::runtime_error("ERROR in simulateSplitICML2019: all outputs must "
+                             "be empty at the beginning");
+  }
+
+  bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
+
+  for (const auto &i : validInstances) {
+    const auto cost = costs.at(i);
+    // The attack on a specific instance 'i' to its feature 'splittingFeature'
+    // generates a set of new feature,
+    // of those we are interested only in the i-th column
+    const auto record = dataset.getRecord(i);
+    const auto attacks = attacker.attack(record, splittingFeature, cost);
+
+    // See line 1014 of parallel_robust_forest.py
+    bool allLeft = true;
+    bool allRight = true;
+
+    for (const auto &atk : attacks) {
+      if (isNumerical) {
+        if (atk.first[splittingFeature] <= splittingValue) {
+          allRight = false;
+        } else {
+          allLeft = false;
+        }
+      } else {
+        if (atk.first[splittingFeature] == splittingValue) {
+          allRight = false;
+        } else {
+          allLeft = false;
+        }
+      }
+      //
+      if (!allLeft && !allRight) {
+        break;
+      }
+    }
+    // Modify the output vectors accordingly (see __simulate_split in python
+    // code)
+    if (allLeft) {
+      leftSplit.push_back(i);
+    } else if (allRight) {
+      rightSplit.push_back(i);
+    } else {
+      if (isNumerical) {
+        if (record[splittingFeature] <= splittingValue) {
+          unknownSplitLeft.push_back(i);
+        } else {
+          unknownSplitRight.push_back(i);
+        }
+
+      } else {
+        if (record[splittingFeature] == splittingValue) {
+          unknownSplitLeft.push_back(i);
+        } else {
+          unknownSplitRight.push_back(i);
+        }
+      }
+    }
+  } // end of loop over instances
+
+  std::vector<std::tuple<label_t, label_t, gain_t>> icmlOptions;
+
+  // case 1: no perturbations
+  std::pair<indexes_t&, indexes_t&> icmlLeft = {leftSplit, unknownSplitLeft};
+  std::pair<indexes_t&, indexes_t&> icmlRight = {rightSplit, unknownSplitRight};
+
+
+
+  indexes_t unknownSplit(unknownSplitLeft);
+  unknownSplit.insert(unknownSplit.end(), unknownSplitRight.begin(),
+                      unknownSplitRight.end());
+
+
+  // case 3: all left
+
+  // case 4: all left
+
+  return {leftSplit, rightSplit, unknownSplit, isSplitSuccessful};
+}
+
 double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
                                        std::vector<double> &grad,
                                        void *my_func_data) {
@@ -336,7 +430,7 @@ bool SplitOptimizer::optimizeGain(
     const std::unordered_map<index_t, cost_t> &costs,
     const std::vector<Constraint> &constraints, const double &currentScore,
     const double &currentPredictionScore, // (used by)/(forward to) optimizeSSE
-    const unsigned& numThreads,
+    const unsigned &numThreads,
     // outputs
     // TODO: better put this in 2 structs (one left, one right) and return it
     gain_t &bestGain, indexes_t &bestSplitLeft, indexes_t &bestSplitRight,
@@ -456,7 +550,7 @@ bool SplitOptimizer::optimizeGain(
             ret.emplace_back(start, end);
           }
         } else { // one thread each feature
-          for (const auto& f : validFeatures) {
+          for (const auto &f : validFeatures) {
             ret.push_back({f});
           }
         }
@@ -475,13 +569,14 @@ bool SplitOptimizer::optimizeGain(
   // score.
   bestGain = -1.0f;
   // Reduction
-  for (auto& fut : batchResults) {
+  for (auto &fut : batchResults) {
     const auto result = fut.get();
     if (result.bestGain > bestGain) {
       bestGain = result.bestGain;
       bestSplitFeatureId = result.bestSplitFeatureId;
       bestSplitValue = result.bestSplitValue;
-      bestNextSplitValue = result.bestNextSplitValue;;
+      bestNextSplitValue = result.bestNextSplitValue;
+      ;
       bestPredLeft = result.bestPredLeft;
       bestPredRight = result.bestPredRight;
       bestSSEuma = result.bestSSEuma;

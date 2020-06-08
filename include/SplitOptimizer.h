@@ -60,13 +60,23 @@ private:
               /*TODO: lossFunction, constraints*/) const;
 
   // Returns left, unknown, right
-  // TODO: this code can go easily a method in the FeatureColumn class
   [[nodiscard]] std::tuple<indexes_t, indexes_t, indexes_t>
   simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
                 const Attacker &attacker,
                 const std::unordered_map<index_t, cost_t> &costs,
                 const feature_t &splittingValue,
                 const index_t &splittingFeature) const;
+
+
+  [[nodiscard]] std::tuple<indexes_t, indexes_t, indexes_t, bool>
+  simulateSplitICML2019(const Dataset &dataset, const indexes_t &validInstances,
+                const Attacker &attacker,
+                const std::unordered_map<index_t, cost_t> &costs,
+                const feature_t &splittingValue,
+                const index_t &splittingFeature,
+                label_t &yHatLeft,
+                label_t &yHatRight,
+                gain_t &sse) const;
 
   // Move the implementation to SplitOptimizer.cpp
   struct ExtraData {
