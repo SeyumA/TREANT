@@ -192,7 +192,7 @@ SplitOptimizer::simulateSplitICML2019(
   }
 
   const bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-  const auto y = dataset.getLabels();
+  const auto &y = dataset.getLabels();
 
   for (const auto &i : validInstances) {
     const auto cost = costs.at(i);
@@ -575,38 +575,49 @@ bool SplitOptimizer::optimizeGain(
         // bestNextSplitValue in the code below)
         const auto &splittingValue = *it;
 
-        // find the best split with this value
-        // line 1169 of the python code it is called self.__simulate_split
-        auto [leftSplit, rightSplit, unknownSplit] =
-            simulateSplit(dataset, validInstances, attacker, costs,
-                          splittingValue, splittingFeature);
-        // Propagate the constraints (see lines 1177-1190)
-        std::vector<Constraint> updatedConstraints;
-        for (const auto &c : constraints) {
-          // This part can be optimized: do we need all the Constraint
-          // object
-          const auto cLeft = c.propagateLeft(attacker, splittingFeature,
-                                             splittingValue, isNumerical);
-          const auto cRight = c.propagateRight(attacker, splittingFeature,
-                                               splittingValue, isNumerical);
-          if (cLeft.has_value() && cRight.has_value()) {
-            updatedConstraints.push_back(c);
-            updatedConstraints.back().setDirection('U');
-          } else if (cLeft.has_value()) {
-            updatedConstraints.push_back(c);
-            updatedConstraints.back().setDirection('L');
-          } else if (cRight.has_value()) {
-            updatedConstraints.push_back(c);
-            updatedConstraints.back().setDirection('R');
-          }
-        }
-
-        feature_t yHatLeft = currentPredictionScore;
-        feature_t yHatRight = currentPredictionScore;
+        bool optSuccess = false;
+        feature_t yHatLeft = 0.0;
+        feature_t yHatRight = 0.0;
         feature_t sse = 0.0;
-        bool optSuccess = optimizeSSE(
-            dataset.getLabels(), leftSplit, rightSplit, unknownSplit,
-            updatedConstraints, yHatLeft, yHatRight, sse);
+        if (useICML2019) {
+          const auto [leftSplit, rightSplit, unknownSplit, success] =
+              simulateSplitICML2019(dataset, validInstances, attacker, costs,
+                                    splittingValue, splittingFeature, yHatLeft, yHatRight, sse);
+          optSuccess = success;
+        } else {
+          // find the best split with this value
+          // line 1169 of the python code it is called self.__simulate_split
+          auto [leftSplit, rightSplit, unknownSplit] =
+              simulateSplit(dataset, validInstances, attacker, costs,
+                            splittingValue, splittingFeature);
+          // Propagate the constraints (see lines 1177-1190)
+          std::vector<Constraint> updatedConstraints;
+          for (const auto &c : constraints) {
+            // This part can be optimized: do we need all the Constraint
+            // object
+            const auto cLeft = c.propagateLeft(attacker, splittingFeature,
+                                               splittingValue, isNumerical);
+            const auto cRight = c.propagateRight(attacker, splittingFeature,
+                                                 splittingValue, isNumerical);
+            if (cLeft.has_value() && cRight.has_value()) {
+              updatedConstraints.push_back(c);
+              updatedConstraints.back().setDirection('U');
+            } else if (cLeft.has_value()) {
+              updatedConstraints.push_back(c);
+              updatedConstraints.back().setDirection('L');
+            } else if (cRight.has_value()) {
+              updatedConstraints.push_back(c);
+              updatedConstraints.back().setDirection('R');
+            }
+          }
+
+          yHatLeft = currentPredictionScore;
+          yHatRight = currentPredictionScore;
+          sse = 0.0;
+          optSuccess = optimizeSSE(dataset.getLabels(), leftSplit, rightSplit,
+                                   unknownSplit, updatedConstraints, yHatLeft,
+                                   yHatRight, sse);
+        }
 
         if (optSuccess) {
           const double currGain = currentScore - sse;
@@ -768,7 +779,7 @@ bool SplitOptimizer::optimizeGain(
         // Update the right indexes
         unknownIndexesToRight.emplace_back(unknownIndex);
         // TODO: check with Lucchese if it is correct to have bestPredLeft as
-        //   bound
+        //       bound
         constraintsLeft.emplace_back(instance, y[unknownIndex], costMinRight,
                                      false, bestPredLeft);
         constraintsRight.emplace_back(instance, y[unknownIndex], costMinRight,
