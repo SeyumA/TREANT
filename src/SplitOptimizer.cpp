@@ -287,17 +287,17 @@ SplitOptimizer::simulateSplitICML2019(
     return {leftSplit, rightSplit, unknownSplit, false};
   } else {
     // Pick the greatest sse
-    auto ss = std::get<2>(icmlOptions[0]);
+    sse = std::get<2>(icmlOptions[0]);
     for (const auto t : icmlOptions) {
       const auto candidate = std::get<2>(t);
-      if (candidate > ss) {
-        ss = candidate;
+      if (candidate > sse) {
+        sse = candidate;
       }
     }
-    //
-
-
-
+    // Pick the two means already computed in the case 1
+    yHatLeft = std::get<0>(icmlOptions[0]);
+    yHatRight = std::get<1>(icmlOptions[0]);
+    return {leftSplit, rightSplit, unknownSplit, true};
   }
 }
 
