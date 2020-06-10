@@ -583,11 +583,9 @@ bool SplitOptimizer::optimizeGain(
         feature_t yHatRight = 0.0;
         feature_t sse = 0.0;
         if (useICML2019) {
-          const auto [leftSplit, rightSplit, unknownSplit, success] =
-              simulateSplitICML2019(dataset, validInstances, attacker, costs,
-                                    splittingValue, splittingFeature, yHatLeft,
-                                    yHatRight, sse);
-          optSuccess = success;
+          optSuccess = std::get<bool>(simulateSplitICML2019(
+              dataset, validInstances, attacker, costs, splittingValue,
+              splittingFeature, yHatLeft, yHatRight, sse));
         } else {
           // find the best split with this value
           // line 1169 of the python code it is called self.__simulate_split
@@ -712,7 +710,18 @@ bool SplitOptimizer::optimizeGain(
         throw std::runtime_error(
             "Constraints are not considered in the ICML2019 strategy");
       }
-
+      // Recover the best split
+      label_t dummyL = 0.0;
+      label_t dummyR = 0.0;
+      gain_t dummySSE = 0.0;
+      const auto [leftSplit, rightSplit, unknownSplit, success] =
+          simulateSplitICML2019(dataset, validInstances, attacker, costs,
+                                bestSplitValue, bestSplitFeatureId, dummyL,
+                                dummyR, dummySSE);
+      bestSplitLeft = std::move(leftSplit);
+      bestSplitRight = std::move(rightSplit);
+      bestSplitUnknown = std::move(unknownSplit);
+      assert(success);
       // Distribute the unknown indexes
       const auto &bestFeatureColumn =
           dataset.getFeatureColumn(bestSplitFeatureId);
@@ -724,7 +733,7 @@ bool SplitOptimizer::optimizeGain(
         }
       }
 
-      // Update the left and right costs (no unknown indexes considered)
+      // Update the left and right costs
       for (const auto &leftIndex : bestSplitLeft) {
         costsLeft[leftIndex] = costs.at(leftIndex);
       }
