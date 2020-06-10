@@ -536,18 +536,21 @@ bool SplitOptimizer::optimizeGain(
     std::unordered_map<index_t, cost_t> &costsLeft,
     std::unordered_map<index_t, cost_t> &costsRight) const {
 
+  // TODO: put this in the input arguments
+  const bool useICML2019 = true;
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
   assert(!validInstances.empty());
 
+  // Lambda function to be used in each subset of features
   const auto optimizeOnSubset =
       [this](const Dataset &dataset,
              const std::unordered_map<index_t, cost_t> &costs,
              const Attacker &attacker, const indexes_t &validFeaturesSubset,
              const indexes_t &validInstances,
              const std::vector<Constraint> &constraints,
-             const double &currentScore,
-             const double &currentPredictionScore) -> OptimizeOutput {
+             const double &currentScore, const double &currentPredictionScore,
+             const bool &useICML2019) -> OptimizeOutput {
     auto ret = OptimizeOutput();
     ret.bestGain = -1.0f;
     ret.bestSplitFeatureId = *validFeaturesSubset.begin();
@@ -582,7 +585,8 @@ bool SplitOptimizer::optimizeGain(
         if (useICML2019) {
           const auto [leftSplit, rightSplit, unknownSplit, success] =
               simulateSplitICML2019(dataset, validInstances, attacker, costs,
-                                    splittingValue, splittingFeature, yHatLeft, yHatRight, sse);
+                                    splittingValue, splittingFeature, yHatLeft,
+                                    yHatRight, sse);
           optSuccess = success;
         } else {
           // find the best split with this value
@@ -638,7 +642,7 @@ bool SplitOptimizer::optimizeGain(
     return ret;
   };
 
-  // Split in subsets the features
+  // Split in subsets the features in order to process them in different subsets
   const std::vector<std::vector<index_t>> batches =
       [](const unsigned &numThreads, const indexes_t &validFeatures) {
         std::vector<std::vector<index_t>> ret;
@@ -667,7 +671,7 @@ bool SplitOptimizer::optimizeGain(
     batchResults[i] =
         std::async(std::launch::async, optimizeOnSubset, dataset, costs,
                    attacker, batches[i], validInstances, constraints,
-                   currentScore, currentPredictionScore);
+                   currentScore, currentPredictionScore, useICML2019);
   }
 
   // Default value of the gain, returns how much we can improve the current
@@ -681,7 +685,6 @@ bool SplitOptimizer::optimizeGain(
       bestSplitFeatureId = result.bestSplitFeatureId;
       bestSplitValue = result.bestSplitValue;
       bestNextSplitValue = result.bestNextSplitValue;
-      ;
       bestPredLeft = result.bestPredLeft;
       bestPredRight = result.bestPredRight;
       bestSSEuma = result.bestSSEuma;
@@ -692,16 +695,8 @@ bool SplitOptimizer::optimizeGain(
   // otherwise we return false
   indexes_t bestSplitUnknown;
   if (bestGain > 0.0) {
-    // Recover the best split: bestSplitLeft, bestSplitRight, bestSplitUnknown
-    {
-      auto [leftSplit, rightSplit, unknownSplit] =
-          simulateSplit(dataset, validInstances, attacker, costs,
-                        bestSplitValue, bestSplitFeatureId);
-      bestSplitLeft = std::move(leftSplit);
-      bestSplitRight = std::move(rightSplit);
-      bestSplitUnknown = std::move(unknownSplit);
-    }
-    // Update constraints (see line 1289 of python code)
+
+    // Sanity check on constraints
     if (!(constraintsLeft.empty() && constraintsRight.empty())) {
       throw std::runtime_error(
           "left and right constraints must be empty at the beginning");
@@ -711,95 +706,136 @@ bool SplitOptimizer::optimizeGain(
           "left and right costs must be empty at the beginning");
     }
 
-    for (const auto &c : constraints) {
-      auto cLeftOpt =
-          c.propagateLeft(attacker, bestSplitFeatureId, bestSplitValue,
-                          dataset.isFeatureNumerical(bestSplitFeatureId));
-      if (cLeftOpt.has_value()) {
-        constraintsLeft.push_back(cLeftOpt.value());
+    if (useICML2019) {
+      // Check on empty constraints based on ICML2019 strategy
+      if (!constraints.empty()) {
+        throw std::runtime_error(
+            "Constraints are not considered in the ICML2019 strategy");
       }
-      auto cRightOpt =
-          c.propagateRight(attacker, bestSplitFeatureId, bestSplitValue,
-                           dataset.isFeatureNumerical(bestSplitFeatureId));
-      if (cRightOpt.has_value()) {
-        constraintsRight.push_back(cRightOpt.value());
-      }
-    }
-    // Manage the unknown indexes, where are they going?
-    const auto &y = dataset.getLabels();
-    // see loop at line 1299
-    indexes_t unknownIndexesToLeft;
-    indexes_t unknownIndexesToRight;
-    for (const auto &unknownIndex : bestSplitUnknown) {
-      const auto instance = dataset.getRecord(unknownIndex);
-      const auto attacks =
-          attacker.attack(instance, bestSplitFeatureId, costs.at(unknownIndex));
 
-      // Assuming the
-      cost_t costMinLeft = attacks[0].second;
-      // TODO: now I should find the minCost among the attacks, on the left side
-      //       there is always an attack with the original instance (that has
-      //       the lowest cost and, I suppose, is the first)
-      //       is it ok?
-      const auto diffLeft = y[unknownIndex] - bestPredLeft;
-      const auto unknownToLeft = diffLeft < 0.0 ? -diffLeft : diffLeft;
-      const auto diffRight = y[unknownIndex] - bestPredRight;
-      const auto unknownToRight = diffRight < 0.0 ? -diffRight : diffRight;
-      if (unknownToLeft > unknownToRight) { // see line 1324 python
-        costsLeft[unknownIndex] = costMinLeft;
-        // Update the left indexes
-        unknownIndexesToLeft.emplace_back(unknownIndex);
-        // Checked with Lucchese: it is correct to have bestPredRight as bound
-        constraintsLeft.emplace_back(instance, y[unknownIndex], costMinLeft,
-                                     true, bestPredRight);
-        constraintsRight.emplace_back(instance, y[unknownIndex], costMinLeft,
-                                      false, bestPredRight);
-      } else {
-        const cost_t costMinRight = [&]() {
-          std::vector<cost_t> costsOnRight;
-          for (const auto &atk : attacks) {
-            if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
-              if (atk.first[bestSplitFeatureId] > bestSplitValue) {
-                costsOnRight.push_back(atk.second);
-              }
-            } else {
-              if (atk.first[bestSplitFeatureId] != bestSplitValue) {
-                costsOnRight.push_back(atk.second);
+      // Distribute the unknown indexes
+      const auto &bestFeatureColumn =
+          dataset.getFeatureColumn(bestSplitFeatureId);
+      for (const auto &unknownIndex : bestSplitUnknown) {
+        if (bestFeatureColumn[unknownIndex] <= bestSplitValue) {
+          bestSplitLeft.push_back(unknownIndex);
+        } else {
+          bestSplitRight.push_back(unknownIndex);
+        }
+      }
+
+      // Update the left and right costs (no unknown indexes considered)
+      for (const auto &leftIndex : bestSplitLeft) {
+        costsLeft[leftIndex] = costs.at(leftIndex);
+      }
+      for (const auto &rightIndex : bestSplitRight) {
+        costsRight[rightIndex] = costs.at(rightIndex);
+      }
+
+    } else {
+      // Recover the best split: bestSplitLeft, bestSplitRight, bestSplitUnknown
+      {
+        auto [leftSplit, rightSplit, unknownSplit] =
+            simulateSplit(dataset, validInstances, attacker, costs,
+                          bestSplitValue, bestSplitFeatureId);
+        bestSplitLeft = std::move(leftSplit);
+        bestSplitRight = std::move(rightSplit);
+        bestSplitUnknown = std::move(unknownSplit);
+      }
+
+      // Update constraints (see line 1289 of python code)
+      for (const auto &c : constraints) {
+        auto cLeftOpt =
+            c.propagateLeft(attacker, bestSplitFeatureId, bestSplitValue,
+                            dataset.isFeatureNumerical(bestSplitFeatureId));
+        if (cLeftOpt.has_value()) {
+          constraintsLeft.push_back(cLeftOpt.value());
+        }
+        auto cRightOpt =
+            c.propagateRight(attacker, bestSplitFeatureId, bestSplitValue,
+                             dataset.isFeatureNumerical(bestSplitFeatureId));
+        if (cRightOpt.has_value()) {
+          constraintsRight.push_back(cRightOpt.value());
+        }
+      }
+      // Manage the unknown indexes, where are they going?
+      const auto &y = dataset.getLabels();
+      // see loop at line 1299
+      indexes_t unknownIndexesToLeft;
+      indexes_t unknownIndexesToRight;
+      for (const auto &unknownIndex : bestSplitUnknown) {
+        const auto instance = dataset.getRecord(unknownIndex);
+        const auto attacks = attacker.attack(instance, bestSplitFeatureId,
+                                             costs.at(unknownIndex));
+
+        // Assuming the
+        cost_t costMinLeft = attacks[0].second;
+        // TODO: now I should find the minCost among the attacks, on the left
+        // side
+        //       there is always an attack with the original instance (that has
+        //       the lowest cost and, I suppose, is the first)
+        //       is it ok?
+        const auto diffLeft = y[unknownIndex] - bestPredLeft;
+        const auto unknownToLeft = diffLeft < 0.0 ? -diffLeft : diffLeft;
+        const auto diffRight = y[unknownIndex] - bestPredRight;
+        const auto unknownToRight = diffRight < 0.0 ? -diffRight : diffRight;
+        if (unknownToLeft > unknownToRight) { // see line 1324 python
+          costsLeft[unknownIndex] = costMinLeft;
+          // Update the left indexes
+          unknownIndexesToLeft.emplace_back(unknownIndex);
+          // Checked with Lucchese: it is correct to have bestPredRight as bound
+          constraintsLeft.emplace_back(instance, y[unknownIndex], costMinLeft,
+                                       true, bestPredRight);
+          constraintsRight.emplace_back(instance, y[unknownIndex], costMinLeft,
+                                        false, bestPredRight);
+        } else {
+          const cost_t costMinRight = [&]() {
+            std::vector<cost_t> costsOnRight;
+            for (const auto &atk : attacks) {
+              if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
+                if (atk.first[bestSplitFeatureId] > bestSplitValue) {
+                  costsOnRight.push_back(atk.second);
+                }
+              } else {
+                if (atk.first[bestSplitFeatureId] != bestSplitValue) {
+                  costsOnRight.push_back(atk.second);
+                }
               }
             }
-          }
-          if (costsOnRight.empty()) {
-            throw std::runtime_error(
-                "Cannot determine a valid cost for the right");
-          }
-          std::sort(costsOnRight.begin(), costsOnRight.end());
-          return *costsOnRight.begin();
-        }();
-        costsRight[unknownIndex] = costMinRight;
-        // Update the right indexes
-        unknownIndexesToRight.emplace_back(unknownIndex);
-        // TODO: check with Lucchese if it is correct to have bestPredLeft as
-        //       bound
-        constraintsLeft.emplace_back(instance, y[unknownIndex], costMinRight,
-                                     false, bestPredLeft);
-        constraintsRight.emplace_back(instance, y[unknownIndex], costMinRight,
-                                      true, bestPredLeft);
+            if (costsOnRight.empty()) {
+              throw std::runtime_error(
+                  "Cannot determine a valid cost for the right");
+            }
+            std::sort(costsOnRight.begin(), costsOnRight.end());
+            return *costsOnRight.begin();
+          }();
+          costsRight[unknownIndex] = costMinRight;
+          // Update the right indexes
+          unknownIndexesToRight.emplace_back(unknownIndex);
+          // TODO: check with Lucchese if it is correct to have bestPredLeft as
+          //       bound
+          constraintsLeft.emplace_back(instance, y[unknownIndex], costMinRight,
+                                       false, bestPredLeft);
+          constraintsRight.emplace_back(instance, y[unknownIndex], costMinRight,
+                                        true, bestPredLeft);
+        }
       }
-    }
-    // Update the left and right costs (no unknown indexes considered)
-    for (const auto &leftIndex : bestSplitLeft) {
-      costsLeft[leftIndex] = costs.at(leftIndex);
-    }
-    for (const auto &rightIndex : bestSplitRight) {
-      costsRight[rightIndex] = costs.at(rightIndex);
-    }
-    // Update the indexes on the left and on the right with the unknown indexes
-    for (const auto &i : unknownIndexesToLeft) {
-      bestSplitLeft.emplace_back(i);
-    }
-    for (const auto &i : unknownIndexesToRight) {
-      bestSplitRight.emplace_back(i);
-    }
+      // Update the left and right costs (no unknown indexes considered)
+      for (const auto &leftIndex : bestSplitLeft) {
+        costsLeft[leftIndex] = costs.at(leftIndex);
+      }
+      for (const auto &rightIndex : bestSplitRight) {
+        costsRight[rightIndex] = costs.at(rightIndex);
+      }
+      // Update the indexes on the left and on the right with the unknown
+      // indexes
+      for (const auto &i : unknownIndexesToLeft) {
+        bestSplitLeft.emplace_back(i);
+      }
+      for (const auto &i : unknownIndexesToRight) {
+        bestSplitRight.emplace_back(i);
+      }
+    } // end if: not ICML2019 strategy
     //
     return true;
   } else {
