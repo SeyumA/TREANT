@@ -113,6 +113,69 @@ std::tuple<indexes_t, indexes_t, indexes_t> SplitOptimizer::simulateSplit(
   return {leftSplit, rightSplit, unknownSplit};
 }
 
+double SplitOptimizer::sseICML2019(const indexes_t &firstPart,
+                                   const indexes_t &secondPart,
+                                   const std::vector<prediction_t> &yTrue,
+                                   const prediction_t &yPred) const {
+  // see in the python code __sse static method
+  if (yTrue.empty()) {
+    return 0.0;
+  }
+  double sum = 0.0;
+  for (const auto i : firstPart) {
+    const double diff = yTrue[i] - yPred;
+    sum += diff * diff;
+  }
+  for (const auto i : secondPart) {
+    const double diff = yTrue[i] - yPred;
+    sum += diff * diff;
+  }
+  return sum;
+}
+
+std::optional<std::tuple<label_t, label_t, gain_t>>
+SplitOptimizer::lossICML2019(const indexes_t &icmlLeftFirst,
+                             const indexes_t &icmlLeftSecond,
+                             const indexes_t &icmlRightFirst,
+                             const indexes_t &icmlRightSecond,
+                             const std::vector<prediction_t> &y) const {
+
+  // see __icml_split_loss in the python code
+  const auto lenLeft = icmlLeftFirst.size() + icmlLeftSecond.size();
+  const auto lenRight = icmlRightFirst.size() + icmlRightSecond.size();
+
+  if (!(lenLeft && lenRight)) {
+    return std::nullopt;
+  }
+
+  const double icmlPredLeft = [&]() {
+    double sum = 0.0;
+    for (const auto &i : icmlLeftFirst) {
+      sum += y[i];
+    }
+    for (const auto &i : icmlLeftSecond) {
+      sum += y[i];
+    }
+    return sum / static_cast<double>(lenLeft);
+  }();
+
+  const double icmlPredRight = [&]() {
+    double sum = 0.0;
+    for (const auto &i : icmlRightFirst) {
+      sum += y[i];
+    }
+    for (const auto &i : icmlRightSecond) {
+      sum += y[i];
+    }
+    return sum / static_cast<double>(lenRight);
+  }();
+
+  const auto icmlLoss =
+      sseICML2019(icmlLeftFirst, icmlLeftSecond, y, icmlPredLeft) +
+      sseICML2019(icmlRightFirst, icmlRightSecond, y, icmlPredRight);
+  return std::make_tuple(icmlPredLeft, icmlPredRight, icmlLoss);
+}
+
 std::tuple<indexes_t, indexes_t, indexes_t, bool>
 SplitOptimizer::simulateSplitICML2019(
     const Dataset &dataset, const indexes_t &validInstances,
@@ -120,67 +183,8 @@ SplitOptimizer::simulateSplitICML2019(
     const feature_t &splittingValue, const index_t &splittingFeature,
     label_t &yHatLeft, label_t &yHatRight, gain_t &sse) const {
   // empty vector of indexes
-  static const indexes_t emptyInd;
-  // lambda that calculates the mean
-
-  // see __icml_split_loss in the python code
-  static const auto icmlSplitLoss =
-      [](const std::pair<const indexes_t &, const indexes_t &> &icmlLeft,
-         const std::pair<const indexes_t &, const indexes_t &> &icmlRight,
-         const std::vector<prediction_t> &y)
-      -> std::optional<std::tuple<label_t, label_t, gain_t>> {
-    const auto lenLeft = icmlLeft.first.size() + icmlLeft.second.size();
-    const auto lenRight = icmlRight.first.size() + icmlRight.second.size();
-
-    // see in the python code __sse static method
-    static const auto sse =
-        [](const std::pair<const indexes_t &, const indexes_t &> &indexes,
-           const std::vector<prediction_t> &yTrue, const prediction_t &yPred) {
-          if (yTrue.empty()) {
-            return 0.0;
-          }
-          double sum = 0.0;
-          for (const auto i : indexes.first) {
-            const double diff = yTrue[i] - yPred;
-            sum += diff * diff;
-          }
-          for (const auto i : indexes.second) {
-            const double diff = yTrue[i] - yPred;
-            sum += diff * diff;
-          }
-          return sum;
-        };
-
-    if (!(lenLeft && lenRight)) {
-      return std::nullopt;
-    }
-
-    const double icmlPredLeft = [&]() {
-      double sum = 0.0;
-      for (const auto &i : icmlLeft.first) {
-        sum += y[i];
-      }
-      for (const auto &i : icmlLeft.second) {
-        sum += y[i];
-      }
-      return sum / static_cast<double>(lenLeft);
-    }();
-
-    const double icmlPredRight = [&]() {
-      double sum = 0.0;
-      for (const auto &i : icmlRight.first) {
-        sum += y[i];
-      }
-      for (const auto &i : icmlRight.second) {
-        sum += y[i];
-      }
-      return sum / static_cast<double>(lenRight);
-    }();
-
-    const auto icmlLoss =
-        sse(icmlLeft, y, icmlPredLeft) + sse(icmlRight, y, icmlPredRight);
-    return std::make_tuple(icmlPredLeft, icmlPredRight, icmlLoss);
-  };
+  // TODO: add a static to emptyInd
+  const indexes_t emptyInd;
 
   indexes_t leftSplit, rightSplit, unknownSplitLeft, unknownSplitRight;
 
@@ -252,14 +256,14 @@ SplitOptimizer::simulateSplitICML2019(
   std::vector<std::tuple<label_t, label_t, gain_t>> icmlOptions;
 
   // case 1: no perturbations
-  if (const auto tOpt = icmlSplitLoss({leftSplit, unknownSplitLeft},
-                                      {rightSplit, unknownSplitRight}, y)) {
+  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitLeft,
+      rightSplit, unknownSplitRight, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
   // case 2: swap
-  if (const auto tOpt = icmlSplitLoss({leftSplit, unknownSplitRight},
-                                      {rightSplit, unknownSplitLeft}, y)) {
+  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitRight,
+                                      rightSplit, unknownSplitLeft, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
@@ -271,13 +275,13 @@ SplitOptimizer::simulateSplitICML2019(
 
   // case 3: all left
   if (const auto tOpt =
-          icmlSplitLoss({leftSplit, unknownSplit}, {rightSplit, emptyInd}, y)) {
+      lossICML2019(leftSplit, unknownSplit, rightSplit, emptyInd, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
   // case 4: all right
   if (const auto tOpt =
-          icmlSplitLoss({leftSplit, emptyInd}, {rightSplit, unknownSplit}, y)) {
+      lossICML2019(leftSplit, emptyInd, rightSplit, unknownSplit, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
@@ -583,9 +587,10 @@ bool SplitOptimizer::optimizeGain(
         feature_t yHatRight = 0.0;
         feature_t sse = 0.0;
         if (useICML2019) {
-          optSuccess = std::get<bool>(simulateSplitICML2019(
+          const auto optimizerRes = simulateSplitICML2019(
               dataset, validInstances, attacker, costs, splittingValue,
-              splittingFeature, yHatLeft, yHatRight, sse));
+              splittingFeature, yHatLeft, yHatRight, sse);
+          optSuccess = std::get<3>(optimizerRes);
         } else {
           // find the best split with this value
           // line 1169 of the python code it is called self.__simulate_split

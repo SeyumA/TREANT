@@ -27,7 +27,7 @@ public:
                const std::unordered_map<index_t, cost_t> &costs,
                const std::vector<Constraint> &constraints,
                const double &currentScore, const double &currentPredictionScore,
-               const unsigned& numThreads,
+               const unsigned &numThreads,
                // outputs
                gain_t &bestGain, indexes_t &bestSplitLeft,
                indexes_t &bestSplitRight, index_t &bestSplitFeatureId,
@@ -67,16 +67,24 @@ private:
                 const feature_t &splittingValue,
                 const index_t &splittingFeature) const;
 
-
   [[nodiscard]] std::tuple<indexes_t, indexes_t, indexes_t, bool>
   simulateSplitICML2019(const Dataset &dataset, const indexes_t &validInstances,
-                const Attacker &attacker,
-                const std::unordered_map<index_t, cost_t> &costs,
-                const feature_t &splittingValue,
-                const index_t &splittingFeature,
-                label_t &yHatLeft,
-                label_t &yHatRight,
-                gain_t &sse) const;
+                        const Attacker &attacker,
+                        const std::unordered_map<index_t, cost_t> &costs,
+                        const feature_t &splittingValue,
+                        const index_t &splittingFeature, label_t &yHatLeft,
+                        label_t &yHatRight, gain_t &sse) const;
+
+  [[nodiscard]] double sseICML2019(const indexes_t &firstPart,
+                                   const indexes_t &secondPart,
+                                   const std::vector<prediction_t> &yTrue,
+                                   const prediction_t &yPred) const;
+
+  [[nodiscard]] std::optional<std::tuple<label_t, label_t, gain_t>>
+  lossICML2019(const indexes_t &icmlLeftFirst, const indexes_t &icmlLeftSecond,
+               const indexes_t &icmlRightFirst,
+               const indexes_t &icmlRightSecond,
+               const std::vector<prediction_t> &y) const;
 
   // Move the implementation to SplitOptimizer.cpp
   struct ExtraData {
