@@ -11,7 +11,8 @@ public:
   void fit(const char *datasetFile,
            const char *attackerFile,
            const double budget,
-           const unsigned threads);
+           const unsigned threads,
+           const bool useICML2019);
   bool is_trained() const;
   void pretty_print() const;
   

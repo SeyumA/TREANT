@@ -528,7 +528,7 @@ bool SplitOptimizer::optimizeGain(
     const std::unordered_map<index_t, cost_t> &costs,
     const std::vector<Constraint> &constraints, const double &currentScore,
     const double &currentPredictionScore, // (used by)/(forward to) optimizeSSE
-    const unsigned &numThreads,
+    const unsigned &numThreads, const bool &useICML2019,
     // outputs
     // TODO: better put this in 2 structs (one left, one right) and return it
     gain_t &bestGain, indexes_t &bestSplitLeft, indexes_t &bestSplitRight,
@@ -540,8 +540,6 @@ bool SplitOptimizer::optimizeGain(
     std::unordered_map<index_t, cost_t> &costsLeft,
     std::unordered_map<index_t, cost_t> &costsRight) const {
 
-  // TODO: put this in the input arguments
-  const bool useICML2019 = true;
   // In general, assert diagnoses an error in the implementation: at this point
   // the validInstances vector can not be empty.
   assert(!validInstances.empty());

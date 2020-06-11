@@ -25,11 +25,11 @@ bool PyDecisionTree::predict() const {
 void PyDecisionTree::fit(const char *datasetFile,
                          const char *attackerFile,
                          const double budget,
-                         const unsigned threads) {
+                         const unsigned threads, const bool useICML2019) {
   assert(is_initialized);
   
   Dataset ds(datasetFile);
-  decisionTree_.fit(ds, attackerFile, budget, threads);
+  decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019);
 }
 
 bool PyDecisionTree::is_trained() const {

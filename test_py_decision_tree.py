@@ -16,7 +16,8 @@ datasetFile = (cwd + "/data/test_training_set_n-1000.txt").encode('ascii')
 attackerFile = (cwd + "/data/attacks.json").encode('ascii')
 budget = 0
 threads = 4
-py_decision_tree.fit(py_dt, datasetFile, attackerFile, budget, threads)
+useICML2019 = True
+py_decision_tree.fit(py_dt, datasetFile, attackerFile, budget, threads, useICML2019)
 
 assert py_decision_tree.is_trained(py_dt) == True
 print("The decision tree is trained:")

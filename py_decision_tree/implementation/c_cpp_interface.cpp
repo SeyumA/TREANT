@@ -18,12 +18,14 @@ void py_decision_tree_fit(py_decision_tree_context_t *context,
                           const char *datasetFile,
                           const char *attackerFile,
                           const double budget,
-                          const unsigned threads) {
+                          const unsigned threads,
+                          const bool useICML2019) {
 							  
   return AS_TYPE(PyDecisionTree, context)->fit(datasetFile,
                                                attackerFile,
                                                budget,
-                                               threads);
+                                               threads,
+                                               useICML2019);
 }
 
 bool py_decision_tree_is_trained(const py_decision_tree_context_t *context) {

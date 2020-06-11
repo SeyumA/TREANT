@@ -31,7 +31,7 @@ public:
   [[nodiscard]] std::size_t getHeight() const;
 
   void fit(const Dataset &dataset, const std::string &attackerFile,
-           cost_t budget, const unsigned &threads,
+           cost_t budget, const unsigned &threads, const bool &useICML2019,
            const Impurity impurityType = Impurity::SSE);
 
   [[nodiscard]] bool isTrained() const;
@@ -52,7 +52,7 @@ private:
                        const prediction_t &currentPrediction,
                        Impurity impurityType,
                        const std::vector<Constraint> &constraints,
-                       const unsigned &threads);
+                       const unsigned &threads, const bool &useICML2019);
 };
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);

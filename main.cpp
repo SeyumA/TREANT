@@ -87,9 +87,10 @@ int main(int argc, char **argv) {
   Dataset dataset(datasetFile);
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
   DecisionTree dt(maxDepth);
+  const bool useICML2019 = true;
 
   const auto start = std::chrono::steady_clock::now();
-  dt.fit(dataset, attackerFile, budget, threads, Impurity::SSE);
+  dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
   const auto end = std::chrono::steady_clock::now();
 
   std::cout << "The decision tree is:" << std::endl << dt << std::endl;
