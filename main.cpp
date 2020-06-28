@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <queue>
 #include <unistd.h>
@@ -103,21 +104,80 @@ int main(int argc, char **argv) {
   const bool useICML2019 = false;
 //  const bool useICML2019 = true;
 
-  const auto start = std::chrono::steady_clock::now();
-  dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
-  const auto end = std::chrono::steady_clock::now();
+  {
+    const auto start = std::chrono::steady_clock::now();
+    dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
+    const auto end = std::chrono::steady_clock::now();
 
-  std::cout << "The decision tree is:" << std::endl << dt << std::endl;
+    std::cout << "The decision tree is:" << std::endl << dt << std::endl;
 
-  std::cout << "Time elapsed to fit the decision tree: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                     start)
-                   .count()
-            << " milliseconds." << std::endl;
+    std::cout << "Time elapsed to fit the decision tree: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                  .count()
+              << " milliseconds." << std::endl;
+  }
 
+
+  // ---------------------------------------------------------------------------
   // Build another dataset with another constructor
+  std::cout << "\n\nBuilding a copy of the dataset" << std::endl;
+  const auto& dsColumns = dataset.getFeatureColumns();
+  const auto& dsLabels = dataset.getLabels();
+  unsigned cols = dsColumns.size();
+  unsigned rows = dsLabels.size();
+  double *X = (double *)malloc(sizeof(double) * cols * rows);
+  for (unsigned i = 0; i < rows; i++) {
+    for (unsigned j = 0; j < cols; j++) {
+      X[i * cols + j] = (dsColumns[j])[i];
+    }
+  }
+  double *y = (double *)malloc(sizeof(double) * rows);
+  for (unsigned i = 0; i < rows; i++) {
+    y[i] = dsLabels[i];
+  }
+  //
+  std::string isNumerical = dataset.isFeatureNumerical(0) ? "True" : "False";
+  for (unsigned j = 1 ; j < cols; j++) {
+    isNumerical += ',';
+    isNumerical += dataset.isFeatureNumerical(j) ? "True" : "False";
+  }
+  //
+  double key = 0.0;
+  auto nameOpt = dataset.getCategoricalFeatureName(key);
+  std::string notNumericalEntries;
+  while (nameOpt.has_value()) {
+    if (!notNumericalEntries.empty()) {
+      notNumericalEntries += ',';
+    }
+    notNumericalEntries += nameOpt.value();
+    nameOpt = dataset.getCategoricalFeatureName(++key);
+  }
+  //
+  std::string columnNames = dataset.getFeatureName(0);
+  for (unsigned j = 1 ; j < cols; j++) {
+    columnNames += ',';
+    columnNames += dataset.getFeatureName(j);
+  }
+  Dataset dataset_copy(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames);
+  DecisionTree dt_copy(maxDepth);
 
+  std::cout << "Fitting again on the copy" << std::endl;
+  {
+    const auto start = std::chrono::steady_clock::now();
+    dt_copy.fit(dataset_copy, attackerFile, budget, threads, useICML2019, Impurity::SSE);
+    const auto end = std::chrono::steady_clock::now();
 
+    std::cout << "The decision tree is:" << std::endl << dt_copy << std::endl;
 
+    std::cout << "Time elapsed to fit the decision tree: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                  .count()
+              << " milliseconds." << std::endl;
+  }
+
+  free((void *)X);
+  free((void *)y);
   return 0;
 }
