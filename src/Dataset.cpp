@@ -10,6 +10,9 @@
 #include <sstream>
 #include <utility>
 
+// For debug
+#include <iostream>
+
 #include "utils.h"
 
 Dataset::Dataset(const std::string &featureFilePath) {
@@ -173,13 +176,111 @@ Dataset::Dataset(const std::string &featureFilePath) {
   if (countLines == 1 || featureColumns_[0].empty() || labelVector_.empty()) {
     throw std::runtime_error("Cannot build an empty dataset (invalid file)");
   }
-  // Update the maps
+
   for (const auto &[s, d] : categoricalToDouble_) {
     const auto iterIsInserted = categoricalToDoubleReversed_.insert({d, s});
     if (!iterIsInserted.second) {
       throw std::runtime_error("Duplicate value in categoricalToDouble map, "
                                "the map must be a bijective function");
     }
+  }
+}
+
+Dataset::Dataset(const double *X,
+                 const unsigned rows,
+                 const unsigned cols,
+                 const double *y,
+                 const std::string &isNumerical,
+                 const std::string &notNumericalEntries,
+                 const std::string &columnNames){
+  if (!X || !y) {
+    throw std::runtime_error("Invalid argument: X, y, isNumerical must not be NULL");
+  }
+
+  if (!rows || !cols) {
+    throw std::runtime_error("Invalid argument: rows and cols must be > 0");
+  }
+  // Populate categoricalToDouble_
+  {
+    std::cout << "notNumericalEntries: " << notNumericalEntries << std::endl;
+    std::istringstream iss(notNumericalEntries);
+    std::string token;
+    char delimiter = ',';
+    feature_t mapValue = 0.0;
+    while (std::getline(iss, token, delimiter)) {
+      if (categoricalToDouble_.insert({token, mapValue}).second) {
+        mapValue++;
+      } else {
+        throw std::runtime_error("token '" + token +
+                                 "' already present in the map");
+      }
+    }
+  }
+  // Update the categoricalToDoubleReversed_
+  for (const auto &[s, d] : categoricalToDouble_) {
+    if (!categoricalToDoubleReversed_.insert({d, s}).second) {
+      throw std::runtime_error("Duplicate value in categoricalToDouble map, "
+                               "the map must be a bijective function");
+    }
+  }
+  // Assuming X entries are stored with C order
+  featureColumns_.resize(cols);
+  // Copy the dataset
+  std::size_t counter = 0;
+  for (std::size_t i{0}; i < rows; ++i) {
+    for (auto& col : featureColumns_) {
+      col.push_back(X[counter]);
+      counter++;
+    }
+  }
+  if (counter != rows * cols) {
+    throw std::runtime_error("Counter mismatch");
+  }
+  // Update is numerical
+  {
+    std::cout << "isNumerical: " << isNumerical << std::endl;
+    std::istringstream iss(isNumerical);
+    std::string token;
+    char delimiter = ',';
+    while (std::getline(iss, token, delimiter)) {
+      featureIsNumeric_.push_back(token == "True" ? true : false);
+    }
+    std::cout << "isNumerical stored" << std::endl;
+    for (const auto& isNum : featureIsNumeric_) {
+      std::cout << isNum << ' ';
+    }
+    std::cout << std::endl;
+  }
+  // Update the labels
+  labelVector_.resize(rows);
+  for (std::size_t i{0}; i < rows; ++i) {
+    labelVector_[i] = y[i];
+  }
+  // Assign feature names
+  {
+    std::cout << "columnNames: " << columnNames << std::endl;
+    std::istringstream iss(columnNames);
+    std::string token;
+    char delimiter = ',';
+    while (std::getline(iss, token, delimiter)) {
+      featureNames_.push_back(token);
+    }
+    const std::set<std::string> mySet(featureNames_.begin(), featureNames_.end());
+    if (mySet.size() != featureNames_.size()) {
+      throw std::runtime_error("Column names must be unique");
+    }
+  }
+  if (featureColumns_.size() != featureNames_.size()) {
+    throw std::runtime_error("Column names must be equal to the number of columns");
+  }
+  // Final controls
+  for (const auto& col : featureColumns_) {
+    if (!(col.size() == labelVector_.size() && col.size() == rows)) {
+      throw std::runtime_error("Columns size mismatch");
+    }
+  }
+  if (!(cols == featureNames_.size() && featureColumns_.size() && featureIsNumeric_.size())) {
+    throw std::runtime_error("Columns size mismatch between featureNames_, featureColumns_ and featureIsNumeric_");
   }
 }
 
@@ -254,6 +355,26 @@ std::ostream &operator<<(std::ostream &os, const Dataset &ds) {
       }
     }
     os << "|\t" << ds.labelVector_[i] << std::endl;
+  }
+
+  os << "\n\nfeatureIsNumeric:" << std::endl;
+  for (const auto& s : ds.featureIsNumeric_) {
+    os << s << ' ';
+  }
+  //
+  os << "\n\ncategoricalToDouble:" << std::endl;
+  for (const auto& [k, v] : ds.categoricalToDouble_) {
+    os << '\t' << k << ": " << v << std::endl;
+  }
+  //
+  os << "\n\ncategoricalToDoubleReversed:" << std::endl;
+  for (const auto& [k, v] : ds.categoricalToDoubleReversed_) {
+    os << '\t' << k << ": " << v << std::endl;
+  }
+  //
+  os << "\n\nLabels:" << std::endl;
+  for (const auto& l : ds.labelVector_) {
+    os << '\t' << l << std::endl;
   }
   return os;
 }

@@ -79,8 +79,8 @@ add_test(
     python_test
   COMMAND
     ${CMAKE_COMMAND} -E env PY_DECISION_TREE_HEADER_FILE=${CMAKE_CURRENT_SOURCE_DIR}/py_decision_tree/py_decision_tree.h
-                            PY_DECISION_TREE_LIBRARY_FILE=${CMAKE_CURRENT_BINARY_DIR}/py_decision_tree/libpy_decision_tree.so
-    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test.py
+                            PY_DECISION_TREE_LIBRARY_FILE=${CMAKE_CURRENT_BINARY_DIR}/cmake-build-release/libpy_decision_tree.so
+    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_py_decision_tree.py
   )
 
 

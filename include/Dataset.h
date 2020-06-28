@@ -9,10 +9,10 @@
 #include <iosfwd>
 #include <map>
 #include <memory>
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "types.h"
 
@@ -24,6 +24,13 @@ class Dataset final {
 
 public:
   explicit Dataset(const std::string &featureFilePath);
+  explicit Dataset(const double *X,
+                   const unsigned rows,
+                   const unsigned cols,
+                   const double *y,
+                   const std::string &isNumerical,
+                   const std::string &notNumericalEntries,
+                   const std::string &columnNames);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;

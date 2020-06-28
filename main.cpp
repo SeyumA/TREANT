@@ -12,6 +12,18 @@
 
 int main(int argc, char **argv) {
 
+//  double X[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+//  const unsigned rows = 5;
+//  const unsigned cols = 2;
+//  double y[] = {0, 0, 0, 1, 1};
+//  int isNumerical[] = {0, 1};
+//  const std::string notNumericalEntries = "mamma,mia,che,paura,ho";
+//  const std::string columnNames = "age,workclass";
+//
+//  Dataset ds1(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames);
+//  std::cout << ds1.isFeatureNumerical(0) << std::endl;
+//  std::cout << ds1.isFeatureNumerical(1) << std::endl;
+
   if (argc < 2) {
     std::cout << "Usage: possible flags are:\n"
               << "-a <name of the attacker json file>, "
@@ -85,9 +97,11 @@ int main(int argc, char **argv) {
   }(argc, argv);
 
   Dataset dataset(datasetFile);
+  std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
   DecisionTree dt(maxDepth);
-  const bool useICML2019 = true;
+  const bool useICML2019 = false;
+//  const bool useICML2019 = true;
 
   const auto start = std::chrono::steady_clock::now();
   dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
@@ -100,5 +114,10 @@ int main(int argc, char **argv) {
                                                                      start)
                    .count()
             << " milliseconds." << std::endl;
+
+  // Build another dataset with another constructor
+
+
+
   return 0;
 }
