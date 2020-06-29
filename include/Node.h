@@ -13,7 +13,7 @@
 class Node {
 
 public:
-  explicit Node(std::size_t instancesAtTrain);
+  //explicit Node(std::size_t instancesAtTrain);
   explicit Node(std::size_t instancesAtTrain, label_t prediction);
   ~Node();
 
@@ -24,11 +24,13 @@ public:
   void setGainValue(double value);
   void setNumberConstraints(std::size_t n);
   void setBestSplitFeatureId(index_t bestFeatureId);
-  void setBestSplitValue(const std::string &bestFeatureValue);
+  void setBestSplitValue(const feature_t &bestSplitFeatureValue);
+  void setBestSplitValueDescription(const std::string &description);
+
   [[nodiscard]] prediction_t getNodePrediction() const;
   [[nodiscard]] prediction_t getNodePredictionScore() const;
 
-  [[nodiscard]] label_t predict(const record_t &) const;
+  [[nodiscard]] label_t predict(const feature_t *record) const;
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 
@@ -40,7 +42,8 @@ private:
   gain_t gainValue_;
   std::size_t constraints_ = 0;
   std::optional<index_t> bestSplitFeatureId_;
-  std::optional<std::string> bestSplitValue_;
+  std::optional<feature_t> bestSplitFeatureValue_;
+  std::optional<std::string> bestSplitValueDescription_;
   Node *left_ = nullptr;
   Node *right_ = nullptr;
 

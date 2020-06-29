@@ -19,16 +19,23 @@ DecisionTree::DecisionTree(std::size_t maxDepth, bool isAffine)
 
 std::size_t DecisionTree::getHeight() const { return height_; }
 
-label_t DecisionTree::predict(const record_t &record) const {
-  if (root_) {
-    return root_->predict(record);
+void DecisionTree::predict(const double *X, const unsigned rows,
+                           const unsigned cols, double *res) const {
+  if (!root_) {
+    throw std::runtime_error(
+        "The tree is not trained, prediction cannot be done");
   }
-  throw std::runtime_error("The tree is not trained, prediction cannot be done");
+
+  std::size_t offset = 0;
+  for (std::size_t i = 0; i < rows; i++) {
+    res[i] = root_->predict(X + offset);
+    offset += cols;
+  }
 }
 
 DecisionTree::~DecisionTree() {
   if (root_) {
-	delete root_;
+    delete root_;
     root_ = nullptr;
   }
 }
@@ -67,16 +74,6 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
                        const cost_t &budget, const unsigned &threads,
                        const bool &useICML2019, const Impurity impurityType) {
 
-  std::cout << "Fit input parameters:" << std::endl;
-  std::cout << "Dataset:" << std::endl;
-  std::cout << dataset << std::endl;
-  std::cout << "attackerFile:" << std::endl;
-  std::cout << attackerFile << std::endl;
-  std::cout << "budget: " << budget << std::endl;
-  std::cout << "threads: " << threads << std::endl;
-  std::cout << "useICML2019: " << useICML2019 << std::endl;
-  std::cout << "impurityType: " << impurityType << std::endl;
-
   if (threads < 1) {
     throw std::runtime_error(
         "Invalid threads parameter in fit function, it must be > 0");
@@ -112,7 +109,8 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
 
   Attacker attacker(dataset, attackerFile, budget);
   root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
-                         currentPrediction, impurityType, constraints, threads, useICML2019);
+                         currentPrediction, impurityType, constraints, threads,
+                         useICML2019);
 
   // height_ is updated in the fitRecursively method
 }
@@ -182,13 +180,10 @@ Node *DecisionTree::fitRecursively(
     ret->setLossValue(bestSSEuma);
     ret->setGainValue(bestGain);
     ret->setBestSplitFeatureId(bestSplitFeatureId);
-    if (dataset.isFeatureNumerical(bestSplitFeatureId)) {
-      std::ostringstream ss;
-      ss << bestSplitValue;
-      ret->setBestSplitValue(ss.str());
-    } else {
+    ret->setBestSplitValue(bestSplitValue);
+    if (!dataset.isFeatureNumerical(bestSplitFeatureId)) {
       const auto fName = *dataset.getCategoricalFeatureName(bestSplitValue);
-      ret->setBestSplitValue(utils::format("'{}'", fName));
+      ret->setBestSplitValueDescription(fName);
     }
     //
     // Prepare for the recursive step ------------------------------------------

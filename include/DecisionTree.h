@@ -26,12 +26,14 @@ public:
   ~DecisionTree();
 
   // Functions
-  [[nodiscard]] label_t predict(const record_t &) const;
+  void predict(const double *X, const unsigned rows, const unsigned cols,
+               double *res) const;
 
   [[nodiscard]] std::size_t getHeight() const;
 
   void fit(const Dataset &dataset, const std::string &attackerFile,
-           const cost_t &budget, const unsigned &threads, const bool &useICML2019,
+           const cost_t &budget, const unsigned &threads,
+           const bool &useICML2019,
            const Impurity impurityType = Impurity::SSE);
 
   [[nodiscard]] bool isTrained() const;

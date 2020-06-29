@@ -179,6 +179,10 @@ int main(int argc, char **argv) {
 
   std::cout << dt_copy << std::endl;
 
+
+  double *predictions = (double *)malloc(sizeof(double) * rows);
+  dt_copy.predict(X, rows, cols, predictions);
+
   free((void *)X);
   free((void *)y);
   return 0;
