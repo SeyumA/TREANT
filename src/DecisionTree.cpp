@@ -20,13 +20,20 @@ DecisionTree::DecisionTree(std::size_t maxDepth, bool isAffine)
 std::size_t DecisionTree::getHeight() const { return height_; }
 
 label_t DecisionTree::predict(const record_t &record) const {
-  return root_->predict(record);
+  if (root_) {
+    return root_->predict(record);
+  }
+  throw std::runtime_error("The tree is not trained, prediction cannot be done");
 }
 
 DecisionTree::~DecisionTree() {
-  delete root_;
-  root_ = nullptr;
+  if (root_) {
+	delete root_;
+    root_ = nullptr;
+  }
 }
+
+bool DecisionTree::isTrained() const { return root_ != nullptr; }
 
 std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   // Recursive lambda for a depth first search visit
@@ -98,8 +105,6 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
 
   // height_ is updated in the fitRecursively method
 }
-
-bool DecisionTree::isTrained() const { return root_ != nullptr; }
 
 Node *DecisionTree::fitRecursively(
     const Dataset &dataset, const indexes_t &rows,
