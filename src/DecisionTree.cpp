@@ -64,8 +64,19 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
 }
 
 void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
-                       cost_t budget, const unsigned &threads,
+                       const cost_t &budget, const unsigned &threads,
                        const bool &useICML2019, const Impurity impurityType) {
+
+  std::cout << "Fit input parameters:" << std::endl;
+  std::cout << "Dataset:" << std::endl;
+  std::cout << dataset << std::endl;
+  std::cout << "attackerFile:" << std::endl;
+  std::cout << attackerFile << std::endl;
+  std::cout << "budget: " << budget << std::endl;
+  std::cout << "threads: " << threads << std::endl;
+  std::cout << "useICML2019: " << useICML2019 << std::endl;
+  std::cout << "impurityType: " << impurityType << std::endl;
+
   if (threads < 1) {
     throw std::runtime_error(
         "Invalid threads parameter in fit function, it must be > 0");

@@ -177,6 +177,8 @@ int main(int argc, char **argv) {
               << " milliseconds." << std::endl;
   }
 
+  std::cout << dt_copy << std::endl;
+
   free((void *)X);
   free((void *)y);
   return 0;
