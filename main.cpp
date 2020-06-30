@@ -182,8 +182,13 @@ int main(int argc, char **argv) {
 
   double *predictions = (double *)malloc(sizeof(double) * rows);
   dt_copy.predict(X, rows, cols, predictions);
+  std::cout << "Predictions on the same dataset:" << std::endl;
+  for (unsigned i = 0; i < rows; i++) {
+    std::cout << static_cast<int>(predictions[i]) << std::endl;
+  }
 
   free((void *)X);
   free((void *)y);
+  free((void *)predictions);
   return 0;
 }

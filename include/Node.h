@@ -13,7 +13,6 @@
 class Node {
 
 public:
-  //explicit Node(std::size_t instancesAtTrain);
   explicit Node(std::size_t instancesAtTrain, label_t prediction);
   ~Node();
 
