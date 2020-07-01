@@ -256,14 +256,14 @@ SplitOptimizer::simulateSplitICML2019(
   std::vector<std::tuple<label_t, label_t, gain_t>> icmlOptions;
 
   // case 1: no perturbations
-  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitLeft,
-      rightSplit, unknownSplitRight, y)) {
+  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitLeft, rightSplit,
+                                     unknownSplitRight, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
   // case 2: swap
-  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitRight,
-                                      rightSplit, unknownSplitLeft, y)) {
+  if (const auto tOpt = lossICML2019(leftSplit, unknownSplitRight, rightSplit,
+                                     unknownSplitLeft, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
@@ -275,13 +275,13 @@ SplitOptimizer::simulateSplitICML2019(
 
   // case 3: all left
   if (const auto tOpt =
-      lossICML2019(leftSplit, unknownSplit, rightSplit, emptyInd, y)) {
+          lossICML2019(leftSplit, unknownSplit, rightSplit, emptyInd, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
   // case 4: all right
   if (const auto tOpt =
-      lossICML2019(leftSplit, emptyInd, rightSplit, unknownSplit, y)) {
+          lossICML2019(leftSplit, emptyInd, rightSplit, unknownSplit, y)) {
     icmlOptions.push_back(*tOpt);
   }
 
@@ -565,14 +565,16 @@ bool SplitOptimizer::optimizeGain(
     for (const auto &splittingFeature : validFeaturesSubset) {
       // Build a set of unique feature values
       bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-      const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
+      // const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
+
       // If not numerical the order can change with respect of dictionary
       // "feature_map" in python for example ("Male":5, "Female":10) in
       // python ->
       // ("Female", "Male") but here we maintain the original order: (5,
       // 10), in practise does not change anything
-      const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
-                                                    currentColumn.end());
+      const std::set<feature_t> uniqueFeatureValues(
+              dataset.getXptr() + dataset.rows_ * splittingFeature,
+              dataset.getXptr() + (dataset.rows_ + 1) * splittingFeature);
 
       for (auto it = uniqueFeatureValues.begin();
            it != uniqueFeatureValues.end(); ++it) {
@@ -726,10 +728,10 @@ bool SplitOptimizer::optimizeGain(
       bestSplitUnknown = std::move(unknownSplit);
       assert(success);
       // Distribute the unknown indexes
-      const auto &bestFeatureColumn =
-          dataset.getFeatureColumn(bestSplitFeatureId);
+//      const auto &bestFeatureColumn =
+//          dataset.getFeatureColumn(bestSplitFeatureId);
       for (const auto &unknownIndex : bestSplitUnknown) {
-        if (bestFeatureColumn[unknownIndex] <= bestSplitValue) {
+        if (dataset(unknownIndex, bestSplitFeatureId) <= bestSplitValue) {
           bestSplitLeft.push_back(unknownIndex);
         } else {
           bestSplitRight.push_back(unknownIndex);

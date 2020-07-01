@@ -17,28 +17,39 @@
 #include "types.h"
 
 /**
- * The FeatureTypes enum must be consistent with feature_t
+ * Memory management of X and y is left to the caller
  */
 
 class Dataset final {
 
 public:
-  explicit Dataset(const std::string &featureFilePath);
-  explicit Dataset(const double *X,
-                   const unsigned rows,
-                   const unsigned cols,
-                   const double *y,
-                   const std::string &isNumerical,
+  //  explicit Dataset(const std::string &featureFilePath);
+
+  // Used by python and by C++ but previously the data must be extracted
+  // from the dataset file using the static functions provided.
+  explicit Dataset(const double *X, const unsigned rows, const unsigned cols,
+                   const double *y, const std::string &isNumerical,
                    const std::string &notNumericalEntries,
                    const std::string &columnNames);
+
+  // Returns rows, columnNames having size = columns
+  static std::pair<unsigned, std::vector<std::string>>
+  getDatasetInfoFromFile(const std::string &datasetFilePath);
+
+  // Fills vectors X and y and returns notNumericalEntries and isNumerical
+  static std::pair<std::vector<std::string>, std::vector<std::string>>
+  fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
+            double *y, const std::string &datasetFilePath);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  [[nodiscard]] const std::vector<std::vector<feature_t>> &
-  getFeatureColumns() const;
+  //  [[nodiscard]] const std::vector<std::vector<feature_t>> &
+  //  getFeatureColumns() const;
 
-  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
+  //  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i)
+  //  const;
+  [[nodiscard]] const feature_t *getXptr() const { return X_; }
 
   [[nodiscard]] bool isFeatureNumerical(index_t j) const;
 
@@ -64,6 +75,30 @@ public:
   [[nodiscard]] prediction_t getDefaultPrediction() const;
 
   friend std::ostream &operator<<(std::ostream &os, const Dataset &ds);
+
+  // Read-only accessors -------------------------------------------------------
+  // Accessor to X that is stored column-wise
+  feature_t operator()(std::size_t i, std::size_t j) const {
+    if (i < rows_ && j < cols_) {
+      return X_[j * rows_ + i];
+    }
+    throw std::runtime_error("Array index out of bound, exiting");
+  }
+  //  // Accessor to y
+  //  label_t operator()(std::size_t i) const {
+  //    if (i < rows_) {
+  //      return y_[i];
+  //    }
+  //    throw std::runtime_error("Array index out of bound, exiting");
+  //  }
+
+public:
+  const std::size_t rows_;
+  const std::size_t cols_;
+
+private:
+  const feature_t *X_;
+  //  const label_t *y_;
 
 private:
   std::vector<std::string> featureNames_;

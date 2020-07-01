@@ -66,10 +66,6 @@ Attacker::AttackerRule::AttackerRule(index_t featureIndexToAttack,
   pre_ = std::vector<feature_t>(pre.begin(), pre.end());
 }
 
-index_t Attacker::AttackerRule::getTargetFeatureIndex() const {
-  return featureIndexToAttack_;
-}
-
 bool Attacker::AttackerRule::apply(const record_t &instance,
                                    record_t &newInstance) const {
   const auto preValue = instance[featureIndexToAttack_];

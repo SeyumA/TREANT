@@ -43,8 +43,6 @@ private:
     explicit AttackerRule(index_t featureIndexToAttack, const std::vector<feature_t>& pre,
                           feature_t post, cost_t cost, bool isNumerical);
 
-    [[nodiscard]] index_t getTargetFeatureIndex() const;
-
     [[nodiscard]] bool apply(const record_t &instance,
                              record_t &newInstance) const;
 
