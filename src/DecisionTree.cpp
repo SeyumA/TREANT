@@ -5,6 +5,8 @@
 #include <functional>
 #include <numeric>
 #include <stack>
+// For debug
+#include <iostream>
 
 #include "Attacker.h"
 #include "Constraint.h"
@@ -20,7 +22,7 @@ DecisionTree::DecisionTree(std::size_t maxDepth, bool isAffine)
 std::size_t DecisionTree::getHeight() const { return height_; }
 
 void DecisionTree::predict(const double *X, const unsigned rows,
-                           const unsigned cols, double *res) const {
+                           const unsigned cols, double *res, const bool score) const {
   if (!root_) {
     throw std::runtime_error(
         "The tree is not trained, prediction cannot be done");
@@ -28,7 +30,7 @@ void DecisionTree::predict(const double *X, const unsigned rows,
 
   std::size_t offset = 0;
   for (std::size_t i = 0; i < rows; i++) {
-    res[i] = root_->predict(X + offset);
+    res[i] = root_->predict(X + offset, score);
     offset += cols;
   }
 }

@@ -26,8 +26,9 @@ public:
   ~DecisionTree();
 
   // Functions
+  // Assumption: X is store in row-wise order (C-order)
   void predict(const double *X, const unsigned rows, const unsigned cols,
-               double *res) const;
+               double *res, const bool score = true) const;
 
   [[nodiscard]] std::size_t getHeight() const;
 

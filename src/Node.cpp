@@ -52,12 +52,12 @@ void Node::setBestSplitValueDescription(const std::string &description) {
   bestSplitValueDescription_ = description;
 }
 
-label_t Node::predict(const feature_t *record) const {
+label_t Node::predict(const feature_t *record, const bool score) const {
 
   if (!left_ && !right_) {
     // leaf: get the node predicion score (see orginal python code where they choose
     // getNodePrediction()[1] because getNodePrediction returns a tuple
-    return getNodePredictionScore();
+    return score ? getNodePredictionScore() : getNodePrediction();
   } else if (left_ && right_) {
     // internal node
     if (!(bestSplitFeatureId_.has_value() &&
@@ -69,17 +69,17 @@ label_t Node::predict(const feature_t *record) const {
       // is categorical
       if (record[bestSplitFeatureId_.value()] ==
           bestSplitFeatureValue_.value()) {
-        return left_->predict(record);
+        return left_->predict(record, score);
       } else {
-        return right_->predict(record);
+        return right_->predict(record, score);
       }
     } else {
       // is numerical
       if (record[bestSplitFeatureId_.value()] <=
           bestSplitFeatureValue_.value()) {
-        return left_->predict(record);
+        return left_->predict(record, score);
       } else {
-        return right_->predict(record);
+        return right_->predict(record, score);
       }
     }
   }

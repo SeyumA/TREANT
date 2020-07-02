@@ -29,7 +29,7 @@ public:
   [[nodiscard]] prediction_t getNodePrediction() const;
   [[nodiscard]] prediction_t getNodePredictionScore() const;
 
-  [[nodiscard]] label_t predict(const feature_t *record) const;
+  [[nodiscard]] label_t predict(const feature_t *record, const bool score) const;
 
   friend std::ostream &operator<<(std::ostream &os, const DecisionTree &dt);
 

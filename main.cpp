@@ -199,9 +199,30 @@ int main(int argc, char **argv) {
               << " milliseconds." << std::endl;
   }
 
+  std::cout << "Is the decision tree trained? " << dt.isTrained() << std::endl;
+
+  // Get X as C-order
+  feature_t *X_test = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
+  std::size_t index = 0;
+  for (std::size_t i = 0; i < rows; i++) {
+    for (std::size_t j = 0; j < cols; j++) {
+      X_test[index] = dataset(i, j);
+      index++;
+    }
+  }
+  double *predictions = (double *)malloc(sizeof(double) * rows);
+  dt.predict(X_test, rows, cols, predictions, false);
+  std::cout <<  "Predictions:" << std::endl;
+  std::cout << static_cast<int>(predictions[0]);
+  for (index_t i = 1; i < rows; i++) {
+    std::cout <<  "," << static_cast<int>(predictions[i]);
+  }
+  std::cout << std::endl;
+
   // Free memory
   free((void *) X);
   free((void *) y);
+  free((void *) X_test);
 
 //  // ---------------------------------------------------------------------------
 //  // Build another dataset with another constructor
