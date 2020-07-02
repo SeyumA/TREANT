@@ -89,13 +89,12 @@ label_t Node::predict(const feature_t *record, const bool score) const {
 
 std::string Node::stringify() const {
   if (!left_ && !right_) {
-    return utils::format("Prediction = {}, Score: {}, Num. instances {}, Loss: "
-                         "{}",
-                         static_cast<int>(prediction_), predictionScore_,
+    return utils::format("Prediction:{},Score:{},Num_instances:{},Loss:{}",
+                         prediction_, predictionScore_,
                          instancesAtTrain_, lossValue_);
   }
-  return utils::format("Feature ID: {}; Threshold = {}, N. instances {}, Loss: "
-                       "{}, Gain: {}, N. constraints {}",
+  return utils::format("Feature_ID:{},Threshold:{},Num_instances:{},Loss:{},"
+                       "Gain:{},Num_constraints:{}",
                        bestSplitFeatureId_.value(),
                        bestSplitValueDescription_.has_value()
                            ? utils::format("'{}'", bestSplitValueDescription_.value())
