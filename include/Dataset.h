@@ -23,8 +23,6 @@
 class Dataset final {
 
 public:
-  explicit Dataset(const std::string &featureFilePath);
-
   // Used by python and by C++ but previously the data must be extracted
   // from the dataset file using the static functions provided.
   explicit Dataset(const double *X, const unsigned rows, const unsigned cols,
@@ -41,13 +39,10 @@ public:
   fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
                     double *y, const std::string &datasetFilePath);
 
+  [[nodiscard]] bool empty() const;
+  [[nodiscard]] std::size_t size() const;
+
   // These functions are needed for node
-  [[nodiscard]] const std::vector<label_t> &getLabels() const;
-
-  [[nodiscard]] const std::vector<std::vector<feature_t>> &getFeatureColumns() const;
-
-  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
-
   [[nodiscard]] bool isFeatureNumerical(index_t j) const;
 
   [[nodiscard]] std::string getFeatureName(index_t i) const;
@@ -65,10 +60,6 @@ public:
   //  [[nodiscard]] std::pair<label_t, frequency_t>
   //  getMostFrequentLabel(const std::vector<index_t> &validIndexes) const;
 
-  [[nodiscard]] bool empty() const { return labelVector_.empty(); }
-
-  [[nodiscard]] std::size_t size() const { return labelVector_.size(); }
-
   [[nodiscard]] prediction_t getDefaultPrediction() const;
 
   friend std::ostream &operator<<(std::ostream &os, const Dataset &ds);
@@ -81,14 +72,13 @@ public:
     }
     throw std::runtime_error("Array index out of bound, exiting");
   }
-  //  // Accessor to y
-  //  label_t operator()(std::size_t i) const {
-  //    if (i < rows_) {
-  //      return y_[i];
-  //    }
-  //    throw std::runtime_error("Array index out of bound, exiting");
-  //  }
-
+  // Accessor to y
+  label_t operator()(std::size_t i) const {
+    if (i < rows_) {
+      return y_[i];
+    }
+    throw std::runtime_error("Array index out of bound, exiting");
+  }
 
 public:
   const std::size_t rows_;
@@ -96,16 +86,12 @@ public:
   const feature_t *X_;
   const label_t *y_;
 
-
 private:
   std::vector<std::string> featureNames_;
   std::vector<bool> featureIsNumeric_;
 
   std::unordered_map<std::string, feature_t> categoricalToDouble_;
   std::unordered_map<feature_t, std::string> categoricalToDoubleReversed_;
-
-  std::vector<std::vector<feature_t>> featureColumns_;
-  std::vector<label_t> labelVector_;
 };
 
 std::ostream &operator<<(std::ostream &os, const Dataset &ds);

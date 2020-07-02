@@ -33,9 +33,8 @@ SplitOptimizer::SplitOptimizer(Impurity impurityType) {
     getLoss_ = [](const Dataset &dataset, const indexes_t &validInstances,
                   label_t yPred) {
       double sum = 0.0;
-      const auto &labels = dataset.getLabels();
       for (const auto &i : validInstances) {
-        const double diff = labels[i] - yPred;
+        const double diff = dataset(i) - yPred;
         sum += diff * diff;
       }
       return sum;
@@ -730,10 +729,8 @@ bool SplitOptimizer::optimizeGain(
       bestSplitUnknown = std::move(unknownSplit);
       assert(success);
       // Distribute the unknown indexes
-      const auto &bestFeatureColumn =
-          dataset.getFeatureColumn(bestSplitFeatureId);
       for (const auto &unknownIndex : bestSplitUnknown) {
-        if (bestFeatureColumn[unknownIndex] <= bestSplitValue) {
+        if (dataset(unknownIndex, bestSplitFeatureId) <= bestSplitValue) {
           bestSplitLeft.push_back(unknownIndex);
         } else {
           bestSplitRight.push_back(unknownIndex);
@@ -775,7 +772,6 @@ bool SplitOptimizer::optimizeGain(
         }
       }
       // Manage the unknown indexes, where are they going?
-      const auto &y = dataset.getLabels();
       // see loop at line 1299
       indexes_t unknownIndexesToLeft;
       indexes_t unknownIndexesToRight;
@@ -791,18 +787,18 @@ bool SplitOptimizer::optimizeGain(
         //       there is always an attack with the original instance (that has
         //       the lowest cost and, I suppose, is the first)
         //       is it ok?
-        const auto diffLeft = y[unknownIndex] - bestPredLeft;
+        const auto diffLeft = dataset(unknownIndex) - bestPredLeft;
         const auto unknownToLeft = diffLeft < 0.0 ? -diffLeft : diffLeft;
-        const auto diffRight = y[unknownIndex] - bestPredRight;
+        const auto diffRight = dataset(unknownIndex) - bestPredRight;
         const auto unknownToRight = diffRight < 0.0 ? -diffRight : diffRight;
         if (unknownToLeft > unknownToRight) { // see line 1324 python
           costsLeft[unknownIndex] = costMinLeft;
           // Update the left indexes
           unknownIndexesToLeft.emplace_back(unknownIndex);
           // Checked with Lucchese: it is correct to have bestPredRight as bound
-          constraintsLeft.emplace_back(instance, y[unknownIndex], costMinLeft,
+          constraintsLeft.emplace_back(instance, dataset(unknownIndex), costMinLeft,
                                        true, bestPredRight);
-          constraintsRight.emplace_back(instance, y[unknownIndex], costMinLeft,
+          constraintsRight.emplace_back(instance, dataset(unknownIndex), costMinLeft,
                                         false, bestPredRight);
         } else {
           const cost_t costMinRight = [&]() {
@@ -830,9 +826,9 @@ bool SplitOptimizer::optimizeGain(
           unknownIndexesToRight.emplace_back(unknownIndex);
           // TODO: check with Lucchese if it is correct to have bestPredLeft as
           //       bound
-          constraintsLeft.emplace_back(instance, y[unknownIndex], costMinRight,
+          constraintsLeft.emplace_back(instance, dataset(unknownIndex), costMinRight,
                                        false, bestPredLeft);
-          constraintsRight.emplace_back(instance, y[unknownIndex], costMinRight,
+          constraintsRight.emplace_back(instance, dataset(unknownIndex), costMinRight,
                                         true, bestPredLeft);
         }
       }

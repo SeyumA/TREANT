@@ -92,7 +92,7 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
   }
 
   // At the beginning all the features and all the rows are active
-  std::vector<std::size_t> rows(dataset.size());
+  std::vector<std::size_t> rows(dataset.rows_);
   std::iota(rows.begin(), rows.end(), 0);
   std::vector<std::size_t> validFeatures(dataset.cols_);
   std::iota(validFeatures.begin(), validFeatures.end(), 0);

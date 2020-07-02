@@ -8,8 +8,7 @@
 #include <iostream>
 
 PyDecisionTree::PyDecisionTree(unsigned int maxDepth) :
-    maxDepth_(maxDepth), decisionTree_(DecisionTree(maxDepth, false)) {
-  is_initialized = true;
+    decisionTree_(DecisionTree(maxDepth, false)) , is_initialized(true) {
 }
 
 PyDecisionTree::~PyDecisionTree() {
@@ -17,18 +16,25 @@ PyDecisionTree::~PyDecisionTree() {
   is_initialized = false;
 }
 
-bool PyDecisionTree::predict() const {
+void PyDecisionTree::predict(const double *X, const unsigned rows, const unsigned cols, double *predictions) const {
   assert(is_initialized);
-  return false;
+  decisionTree_.predict(X, rows, cols, predictions);
 }
 
-void PyDecisionTree::fit(const char *datasetFile,
+void PyDecisionTree::fit(const double *X,
+                         const unsigned rows,
+                         const unsigned cols,
+                         const double *y,
+                         const char *isNumerical,
+                         const char *notNumericalEntries,
+                         const char *columnNames,
                          const char *attackerFile,
                          const double budget,
-                         const unsigned threads, const bool useICML2019) {
+                         const unsigned threads,
+                         const bool useICML2019) {
   assert(is_initialized);
-  
-  Dataset ds(datasetFile);
+
+  Dataset ds(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames);
   decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019);
 }
 
