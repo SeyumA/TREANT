@@ -23,7 +23,7 @@
 class Dataset final {
 
 public:
-  //  explicit Dataset(const std::string &featureFilePath);
+  explicit Dataset(const std::string &featureFilePath);
 
   // Used by python and by C++ but previously the data must be extracted
   // from the dataset file using the static functions provided.
@@ -44,11 +44,10 @@ public:
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;
 
-  //  [[nodiscard]] const std::vector<std::vector<feature_t>> &
-  //  getFeatureColumns() const;
+  [[nodiscard]] const std::vector<std::vector<feature_t>> &getFeatureColumns() const;
 
-  //  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i)
-  //  const;
+  [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
+
   [[nodiscard]] const feature_t *getXptr() const { return X_; }
 
   [[nodiscard]] bool isFeatureNumerical(index_t j) const;
@@ -98,7 +97,7 @@ public:
 
 private:
   const feature_t *X_;
-  //  const label_t *y_;
+  const label_t *y_;
 
 private:
   std::vector<std::string> featureNames_;

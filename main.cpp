@@ -149,44 +149,46 @@ int main(int argc, char **argv) {
     return {attackerFile, datasetFile, maxDepth, budget, threads};
   }(argc, argv);
 
-  const auto [rows, columnNames] = Dataset::getDatasetInfoFromFile(datasetFile);
-  const unsigned cols = columnNames.size();
-  feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
-  label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
-  const auto [isNumerical, notNumericalEntries] = Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
-  std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size() << std::endl;
-
-  Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
-          utils::join(notNumericalEntries, ','),
-          utils::join(columnNames, ','));
-  std::cout << "The notNumericalEntries size is: " << notNumericalEntries.size() << std::endl;
-  std::cout << "Dataset:\n" << dataset << std::endl;
-
-  // Free memory
-  free((void *) X);
-  free((void *) y);
-
-
-//  Dataset dataset(datasetFile);
-//  std::cout << dataset << std::endl << std::endl;
-//  std::cout << "The dataset size is:" << dataset.size() << std::endl;
-//  DecisionTree dt(maxDepth);
-//  const bool useICML2019 = false;
-//  //  const bool useICML2019 = true;
+//  // Build a dataset with pointers -------------------------------------------------------------------------
+//  const auto [rows, columnNames] = Dataset::getDatasetInfoFromFile(datasetFile);
+//  const unsigned cols = columnNames.size();
+//  feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
+//  label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
+//  const auto [isNumerical, notNumericalEntries] = Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
+//  std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size() << std::endl;
 //
-//  {
-//    const auto start = std::chrono::steady_clock::now();
-//    dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
-//    const auto end = std::chrono::steady_clock::now();
+//  Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
+//          utils::join(notNumericalEntries, ','),
+//          utils::join(columnNames, ','));
+//  std::cout << "The notNumericalEntries size is: " << notNumericalEntries.size() << std::endl;
+//  std::cout << "Dataset:\n" << dataset << std::endl;
 //
-//    std::cout << "The decision tree is:" << std::endl << dt << std::endl;
-//
-//    std::cout << "Time elapsed to fit the decision tree: "
-//              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-//                                                                       start)
-//                     .count()
-//              << " milliseconds." << std::endl;
-//  }
+//  // Free memory
+//  free((void *) X);
+//  free((void *) y);
+// // --------------------------------------------------------------------------------------------------------
+
+
+  Dataset dataset(datasetFile);
+  std::cout << dataset << std::endl << std::endl;
+  std::cout << "The dataset size is:" << dataset.size() << std::endl;
+  DecisionTree dt(maxDepth);
+  const bool useICML2019 = false;
+  //  const bool useICML2019 = true;
+
+  {
+    const auto start = std::chrono::steady_clock::now();
+    dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
+    const auto end = std::chrono::steady_clock::now();
+
+    std::cout << "The decision tree is:" << std::endl << dt << std::endl;
+
+    std::cout << "Time elapsed to fit the decision tree: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                     .count()
+              << " milliseconds." << std::endl;
+  }
 
 //  // ---------------------------------------------------------------------------
 //  // Build another dataset with another constructor

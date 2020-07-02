@@ -15,186 +15,184 @@
 
 #include "utils.h"
 
-// Dataset::Dataset(const std::string &featureFilePath) : X_(0), rows_(0),
-// cols_(0) {
-//
-//  std::ifstream ifs;
-//  ifs.open(featureFilePath);
-//  if (!ifs.is_open() || !ifs.good()) {
-//    throw std::runtime_error("The record file stream is not open or not
-//    good");
-//  }
-//  // Reading the first line and populate the empty dataset but with the right
-//  // names
-//  std::optional<std::size_t> labelPos = std::nullopt;
-//  std::string line;
-//  char lineDelimiter = ' ';
-//  if (std::getline(ifs, line)) {
-//    std::istringstream is(line);
-//    std::string featureName;
-//    std::size_t i = 0;
-//    while (std::getline(is, featureName, lineDelimiter)) {
-//      if (!featureName.empty()) {
-//        if (featureName == "LABEL") {
-//          if (labelPos.has_value()) {
-//            throw std::runtime_error("Only one column can contain labels");
-//          } else {
-//            labelPos = i;
-//          }
-//        } else {
-//          featureNames_.push_back(featureName);
-//        }
-//        i++;
-//      }
-//    }
-//  } else {
-//    throw std::runtime_error("Cannot read the first line");
-//  }
-//  //
-//  if (!labelPos.has_value()) {
-//    throw std::runtime_error("Cannot find 'LABEL' in the first line (there "
-//                             "must be a column of labels");
-//  }
-//  // Check for duplicates
-//  if (featureNames_.size() !=
-//      std::set<std::string>(featureNames_.begin(), featureNames_.end())
-//          .size()) {
-//    throw std::runtime_error(
-//        "Label names are not unique, there are duplicates");
-//  }
-//  //
-//  // Populate the dataset
-//  // - resize the columns vector
-//  featureColumns_.resize(featureNames_.size());
-//  featureIsNumeric_.resize(featureNames_.size());
-//  std::size_t columnLimit = featureColumns_.size() + 1;
-//  // - initialize the counter of lines (the first line is already read
-//  std::size_t countLines = 1;
-//
-//  feature_t mapValue = 0.0;
-//  if (!categoricalToDouble_.empty()) {
-//    std::runtime_error("categoricalToDouble map must be empty here!");
-//  }
-//  const auto getDoubleFromToken = [&mapValue, this](const std::string &token)
-//  {
-//    try {
-//      return std::make_pair(std::stod(token), true);
-//    } catch (std::exception &) {
-//      const auto [iter, isInserted] =
-//          this->categoricalToDouble_.insert({token, mapValue});
-//      if (isInserted) {
-//        mapValue++;
-//      }
-//      return std::make_pair(iter->second, false);
-//    }
-//  };
-//  //
-//  // Build the map of categorical entries and find out which are numerical
-//  if (std::getline(ifs, line)) {
-//    countLines++;
-//    std::istringstream is(line);
-//    std::string token;
-//    index_t j = 0;
-//    while (std::getline(is, token, lineDelimiter)) {
-//      if (!token.empty()) {
-//        if (j == labelPos) {
-//          labelVector_.push_back(std::stod(token));
-//        } else {
-//          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
-//          featureColumns_[j].push_back(valueToInsert);
-//          featureIsNumeric_[j] = isNumerical;
-//        }
-//        j++;
-//      }
-//    }
-//    if (j != columnLimit) {
-//      throw std::runtime_error(
-//          utils::format("One missing feature at line {}", countLines));
-//    }
-//  } else {
-//    throw std::runtime_error("Cannot find second line after the header line");
-//  }
-//
-//  // Build the rest of the database
-//  while (std::getline(ifs, line)) {
-//    countLines++;
-//    std::istringstream is(line);
-//    std::string token;
-//    std::size_t j = 0;  // index on the columns of the file
-//    std::size_t jj = 0; // index on the columns of the dataset.vector
-//    while (std::getline(is, token, lineDelimiter)) {
-//      if (!token.empty()) {
-//        // Check on the column limit
-//        if (j >= columnLimit) {
-//          throw std::runtime_error(
-//              utils::format("At line {} I found more data than expected ({})",
-//                            countLines, columnLimit));
-//        }
-//        //
-//        if (j == labelPos) { // Case where the we are reading the label that
-//        is
-//                             // a boolean
-//          if (token == "0") {
-//            labelVector_.emplace_back(0.0);
-//          } else if (token == "1") {
-//            labelVector_.emplace_back(1.0);
-//          } else {
-//            throw std::runtime_error(
-//                utils::format("Invalid binary label at line {}, allowed label
-//                "
-//                              "are '0', '1'",
-//                              countLines));
-//          }
-//        } else { // Case where we are reading a feature
-//          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
-//          if (isNumerical != featureIsNumeric_[j]) {
-//            const std::string type =
-//                featureIsNumeric_[j] ? "numerical" : "categorical";
-//            throw std::runtime_error(utils::format(
-//                "The feature '{}' at line {} is supposed to be {} but it s
-//                not", token, type));
-//          }
-//          featureColumns_[jj].push_back(valueToInsert);
-//          jj++;
-//        }
-//        j++; // always update this index if a token is not empty
-//      }
-//    }
-//    if (j != columnLimit) {
-//      throw std::runtime_error(
-//          utils::format("One missing feature at line {}", countLines));
-//    }
-//  }
-//  // Close the file stream
-//  ifs.close();
-//  // Check on the size of the columns
-//  for (const auto &c : featureColumns_) {
-//    if (c.size() != labelVector_.size()) {
-//      throw std::runtime_error(
-//          utils::format("ERROR: All the feature columns must have the same "
-//                        "size of the label vector. Column has a size of {} and
-//                        " "labels are {}", c.size(), labelVector_.size()));
-//    }
-//  }
-//  //
-//  if (countLines == 1 || featureColumns_[0].empty() || labelVector_.empty()) {
-//    throw std::runtime_error("Cannot build an empty dataset (invalid file)");
-//  }
-//
-//  for (const auto &[s, d] : categoricalToDouble_) {
-//    const auto iterIsInserted = categoricalToDoubleReversed_.insert({d, s});
-//    if (!iterIsInserted.second) {
-//      throw std::runtime_error("Duplicate value in categoricalToDouble map, "
-//                               "the map must be a bijective function");
-//    }
-//  }
-//}
+Dataset::Dataset(const std::string &featureFilePath)
+    : rows_(0), cols_(0), X_(0), y_(0) {
+
+  std::ifstream ifs;
+  ifs.open(featureFilePath);
+  if (!ifs.is_open() || !ifs.good()) {
+    throw std::runtime_error("The record file stream is not open or not good");
+  }
+  // Reading the first line and populate the empty dataset but with the right
+  // names
+  std::optional<std::size_t> labelPos = std::nullopt;
+  std::string line;
+  char lineDelimiter = ' ';
+  if (std::getline(ifs, line)) {
+    std::istringstream is(line);
+    std::string featureName;
+    std::size_t i = 0;
+    while (std::getline(is, featureName, lineDelimiter)) {
+      if (!featureName.empty()) {
+        if (featureName == "LABEL") {
+          if (labelPos.has_value()) {
+            throw std::runtime_error("Only one column can contain labels");
+          } else {
+            labelPos = i;
+          }
+        } else {
+          featureNames_.push_back(featureName);
+        }
+        i++;
+      }
+    }
+  } else {
+    throw std::runtime_error("Cannot read the first line");
+  }
+  //
+  if (!labelPos.has_value()) {
+    throw std::runtime_error("Cannot find 'LABEL' in the first line (there "
+                             "must be a column of labels");
+  }
+  // Check for duplicates
+  if (featureNames_.size() !=
+      std::set<std::string>(featureNames_.begin(), featureNames_.end())
+          .size()) {
+    throw std::runtime_error(
+        "Label names are not unique, there are duplicates");
+  }
+  //
+  // Populate the dataset
+  // - resize the columns vector
+  featureColumns_.resize(featureNames_.size());
+  featureIsNumeric_.resize(featureNames_.size());
+  std::size_t columnLimit = featureColumns_.size() + 1;
+  // - initialize the counter of lines (the first line is already read
+  std::size_t countLines = 1;
+
+  feature_t mapValue = 0.0;
+  if (!categoricalToDouble_.empty()) {
+    std::runtime_error("categoricalToDouble map must be empty here!");
+  }
+  const auto getDoubleFromToken = [&mapValue, this](const std::string &token) {
+    try {
+      return std::make_pair(std::stod(token), true);
+    } catch (std::exception &) {
+      const auto [iter, isInserted] =
+          this->categoricalToDouble_.insert({token, mapValue});
+      if (isInserted) {
+        mapValue++;
+      }
+      return std::make_pair(iter->second, false);
+    }
+  };
+  //
+  // Build the map of categorical entries and find out which are numerical
+  if (std::getline(ifs, line)) {
+    countLines++;
+    std::istringstream is(line);
+    std::string token;
+    index_t j = 0;
+    while (std::getline(is, token, lineDelimiter)) {
+      if (!token.empty()) {
+        if (j == labelPos) {
+          labelVector_.push_back(std::stod(token));
+        } else {
+          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
+          featureColumns_[j].push_back(valueToInsert);
+          featureIsNumeric_[j] = isNumerical;
+        }
+        j++;
+      }
+    }
+    if (j != columnLimit) {
+      throw std::runtime_error(
+          utils::format("One missing feature at line {}", countLines));
+    }
+  } else {
+    throw std::runtime_error("Cannot find second line after the header line");
+  }
+
+  // Build the rest of the database
+  while (std::getline(ifs, line)) {
+    countLines++;
+    std::istringstream is(line);
+    std::string token;
+    std::size_t j = 0;  // index on the columns of the file
+    std::size_t jj = 0; // index on the columns of the dataset.vector
+    while (std::getline(is, token, lineDelimiter)) {
+      if (!token.empty()) {
+        // Check on the column limit
+        if (j >= columnLimit) {
+          throw std::runtime_error(
+              utils::format("At line {} I found more data than expected ({})",
+                            countLines, columnLimit));
+        }
+        //
+        if (j == labelPos) { // Case where the we are reading the label that is
+                             // a boolean
+          if (token == "0") {
+            labelVector_.emplace_back(0.0);
+          } else if (token == "1") {
+            labelVector_.emplace_back(1.0);
+          } else {
+            throw std::runtime_error(
+                utils::format("Invalid binary label at line {}, allowed label"
+                              "are '0', '1'",
+                              countLines));
+          }
+        } else { // Case where we are reading a feature
+          const auto [valueToInsert, isNumerical] = getDoubleFromToken(token);
+          if (isNumerical != featureIsNumeric_[j]) {
+            const std::string type =
+                featureIsNumeric_[j] ? "numerical" : "categorical";
+            throw std::runtime_error(
+                utils::format("The feature '{}' at line {} is supposed to be "
+                              "{} but it is not",
+                              token, type));
+          }
+          featureColumns_[jj].push_back(valueToInsert);
+          jj++;
+        }
+        j++; // always update this index if a token is not empty
+      }
+    }
+    if (j != columnLimit) {
+      throw std::runtime_error(
+          utils::format("One missing feature at line {}", countLines));
+    }
+  }
+  // Close the file stream
+  ifs.close();
+  // Check on the size of the columns
+  for (const auto &c : featureColumns_) {
+    if (c.size() != labelVector_.size()) {
+      throw std::runtime_error(
+          utils::format("ERROR: All the feature columns must have the same "
+                        "size of the label vector. Column has a size of {} and "
+                        "labels are {}",
+                        c.size(), labelVector_.size()));
+    }
+  }
+  //
+  if (countLines == 1 || featureColumns_[0].empty() || labelVector_.empty()) {
+    throw std::runtime_error("Cannot build an empty dataset (invalid file)");
+  }
+
+  for (const auto &[s, d] : categoricalToDouble_) {
+    const auto iterIsInserted = categoricalToDoubleReversed_.insert({d, s});
+    if (!iterIsInserted.second) {
+      throw std::runtime_error("Duplicate value in categoricalToDouble map, "
+                               "the map must be a bijective function");
+    }
+  }
+}
 
 Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
                  const double *y, const std::string &isNumerical,
                  const std::string &notNumericalEntries,
                  const std::string &columnNames)
-    : X_(X), rows_(rows), cols_(cols) {
+    : rows_(rows), cols_(cols), X_(X), y_(y) {
   if (!X || !y) {
     throw std::runtime_error(
         "Invalid argument: X, y, isNumerical must not be NULL");
@@ -402,14 +400,13 @@ Dataset::fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
 
 const std::vector<label_t> &Dataset::getLabels() const { return labelVector_; }
 
-// const std::vector<std::vector<feature_t>> &Dataset::getFeatureColumns() const
-// {
-//  return featureColumns_;
-//}
+const std::vector<std::vector<feature_t>> &Dataset::getFeatureColumns() const {
+  return featureColumns_;
+}
 
-// const std::vector<feature_t> &Dataset::getFeatureColumn(index_t i) const {
-//  return featureColumns_[i];
-//}
+const std::vector<feature_t> &Dataset::getFeatureColumn(index_t i) const {
+  return featureColumns_[i];
+}
 
 bool Dataset::isFeatureNumerical(index_t j) const {
   return featureIsNumeric_[j];

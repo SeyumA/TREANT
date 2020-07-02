@@ -565,16 +565,14 @@ bool SplitOptimizer::optimizeGain(
     for (const auto &splittingFeature : validFeaturesSubset) {
       // Build a set of unique feature values
       bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-      // const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
-
+      const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
       // If not numerical the order can change with respect of dictionary
       // "feature_map" in python for example ("Male":5, "Female":10) in
       // python ->
       // ("Female", "Male") but here we maintain the original order: (5,
       // 10), in practise does not change anything
-      const std::set<feature_t> uniqueFeatureValues(
-              dataset.getXptr() + dataset.rows_ * splittingFeature,
-              dataset.getXptr() + (dataset.rows_ + 1) * splittingFeature);
+      const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
+                                                    currentColumn.end());
 
       for (auto it = uniqueFeatureValues.begin();
            it != uniqueFeatureValues.end(); ++it) {
@@ -728,10 +726,10 @@ bool SplitOptimizer::optimizeGain(
       bestSplitUnknown = std::move(unknownSplit);
       assert(success);
       // Distribute the unknown indexes
-//      const auto &bestFeatureColumn =
-//          dataset.getFeatureColumn(bestSplitFeatureId);
+      const auto &bestFeatureColumn =
+          dataset.getFeatureColumn(bestSplitFeatureId);
       for (const auto &unknownIndex : bestSplitUnknown) {
-        if (dataset(unknownIndex, bestSplitFeatureId) <= bestSplitValue) {
+        if (bestFeatureColumn[unknownIndex] <= bestSplitValue) {
           bestSplitLeft.push_back(unknownIndex);
         } else {
           bestSplitRight.push_back(unknownIndex);
