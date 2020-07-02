@@ -168,8 +168,17 @@ int main(int argc, char **argv) {
 //  free((void *) y);
 // // --------------------------------------------------------------------------------------------------------
 
+  const auto [rows, columnNames] = Dataset::getDatasetInfoFromFile(datasetFile);
+  const unsigned cols = columnNames.size();
+  feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
+  label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
+  const auto [isNumerical, notNumericalEntries] = Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
+  std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size() << std::endl;
 
-  Dataset dataset(datasetFile);
+  Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
+          utils::join(notNumericalEntries, ','),
+          utils::join(columnNames, ','));
+//  Dataset dataset(datasetFile);
   std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
   DecisionTree dt(maxDepth);
@@ -189,6 +198,10 @@ int main(int argc, char **argv) {
                      .count()
               << " milliseconds." << std::endl;
   }
+
+  // Free memory
+  free((void *) X);
+  free((void *) y);
 
 //  // ---------------------------------------------------------------------------
 //  // Build another dataset with another constructor

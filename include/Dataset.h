@@ -48,8 +48,6 @@ public:
 
   [[nodiscard]] const std::vector<feature_t> &getFeatureColumn(index_t i) const;
 
-  [[nodiscard]] const feature_t *getXptr() const { return X_; }
-
   [[nodiscard]] bool isFeatureNumerical(index_t j) const;
 
   [[nodiscard]] std::string getFeatureName(index_t i) const;
@@ -91,13 +89,13 @@ public:
   //    throw std::runtime_error("Array index out of bound, exiting");
   //  }
 
+
 public:
   const std::size_t rows_;
   const std::size_t cols_;
-
-private:
   const feature_t *X_;
   const label_t *y_;
+
 
 private:
   std::vector<std::string> featureNames_;

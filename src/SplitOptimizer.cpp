@@ -6,7 +6,6 @@
 #include <omp.h>
 
 #include "SplitOptimizer.h"
-
 // NLOPT test
 #include <cmath>
 #include <nlopt.hpp>
@@ -115,12 +114,9 @@ std::tuple<indexes_t, indexes_t, indexes_t> SplitOptimizer::simulateSplit(
 
 double SplitOptimizer::sseICML2019(const indexes_t &firstPart,
                                    const indexes_t &secondPart,
-                                   const std::vector<prediction_t> &yTrue,
+                                   const label_t *yTrue,
                                    const prediction_t &yPred) const {
   // see in the python code __sse static method
-  if (yTrue.empty()) {
-    return 0.0;
-  }
   double sum = 0.0;
   for (const auto i : firstPart) {
     const double diff = yTrue[i] - yPred;
@@ -138,7 +134,7 @@ SplitOptimizer::lossICML2019(const indexes_t &icmlLeftFirst,
                              const indexes_t &icmlLeftSecond,
                              const indexes_t &icmlRightFirst,
                              const indexes_t &icmlRightSecond,
-                             const std::vector<prediction_t> &y) const {
+                             const label_t *y) const {
 
   // see __icml_split_loss in the python code
   const auto lenLeft = icmlLeftFirst.size() + icmlLeftSecond.size();
@@ -196,7 +192,7 @@ SplitOptimizer::simulateSplitICML2019(
   }
 
   const bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-  const auto &y = dataset.getLabels();
+  const auto y = dataset.y_;
 
   for (const auto &i : validInstances) {
     const auto cost = costs.at(i);
@@ -310,7 +306,7 @@ double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
                                        void *my_func_data) {
   // This function calculates f (see __sse_under_max_attack)
   static auto f =
-      [](const std::vector<prediction_t> &y, const indexes_t &leftIndexes,
+      [](const label_t *y, const indexes_t &leftIndexes,
          const indexes_t &rightIndexes, const indexes_t &unknownIndexes,
          const std::vector<double> &leftRight) -> double {
     const auto &left = leftRight[0];
@@ -341,7 +337,7 @@ double SplitOptimizer::sseCostFunction(const std::vector<double> &x,
 
   // See slsqp.py line 31, function approx_jacobian
   static auto approxJacobian =
-      [](const std::vector<prediction_t> &y, const indexes_t &leftIndexes,
+      [](const label_t *y, const indexes_t &leftIndexes,
          const indexes_t &rightIndexes, const indexes_t &unknownIndexes,
          const std::vector<double> &x0, const double &f0) {
         // See scipy.optimize.slsqp code default eps value
@@ -470,7 +466,7 @@ double SplitOptimizer::constraintFunction(const std::vector<double> &x,
   return ret;
 }
 
-bool SplitOptimizer::optimizeSSE(const std::vector<label_t> &y,
+bool SplitOptimizer::optimizeSSE(const label_t *y,
                                  const indexes_t &leftSplit,
                                  const indexes_t &rightSplit,
                                  const indexes_t &unknownSplit,
@@ -565,14 +561,22 @@ bool SplitOptimizer::optimizeGain(
     for (const auto &splittingFeature : validFeaturesSubset) {
       // Build a set of unique feature values
       bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
-      const auto &currentColumn = dataset.getFeatureColumn(splittingFeature);
       // If not numerical the order can change with respect of dictionary
       // "feature_map" in python for example ("Male":5, "Female":10) in
       // python ->
       // ("Female", "Male") but here we maintain the original order: (5,
       // 10), in practise does not change anything
-      const std::set<feature_t> uniqueFeatureValues(currentColumn.begin(),
-                                                    currentColumn.end());
+      const std::set<feature_t> uniqueFeatureValues =
+          [](const Dataset &dataset, const index_t &splittingFeature) {
+            std::set<feature_t> ret;
+            auto ptr =
+                dataset.X_ + dataset.rows_ * splittingFeature;
+            for (index_t i = 0; i < dataset.rows_; i++) {
+              ret.insert(*ptr);
+              ptr++;
+            }
+            return ret;
+          }(dataset, splittingFeature);
 
       for (auto it = uniqueFeatureValues.begin();
            it != uniqueFeatureValues.end(); ++it) {
@@ -619,7 +623,7 @@ bool SplitOptimizer::optimizeGain(
           yHatLeft = currentPredictionScore;
           yHatRight = currentPredictionScore;
           sse = 0.0;
-          optSuccess = optimizeSSE(dataset.getLabels(), leftSplit, rightSplit,
+          optSuccess = optimizeSSE(dataset.y_, leftSplit, rightSplit,
                                    unknownSplit, updatedConstraints, yHatLeft,
                                    yHatRight, sse);
         }
@@ -861,7 +865,7 @@ double SplitOptimizer::evaluateSplit(const Dataset &dataset,
   return getLoss_(dataset, rows, prediction);
 }
 
-SplitOptimizer::ExtraData::ExtraData(const std::vector<label_t> &y,
+SplitOptimizer::ExtraData::ExtraData(const label_t *y,
                                      const indexes_t &leftIndexes,
                                      const indexes_t &rightIndexes,
                                      const indexes_t &unknownIndexes)
