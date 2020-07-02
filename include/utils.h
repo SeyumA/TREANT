@@ -41,6 +41,8 @@ buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
                  // ...
                  );
 
+std::string join(const std::vector<std::string>& list, const char delimiter);
+
 template <typename S1, typename S2> std::string concatenate(S1 s1, S2 s2) {
   std::stringstream ss;
   ss << std::fixed << s1 << s2;

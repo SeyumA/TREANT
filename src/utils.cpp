@@ -56,4 +56,16 @@ namespace utils {
         return res;
     }
 
+    std::string join(const std::vector<std::string>& list, const char delimiter) {
+        if (list.empty()) {
+            return std::string();
+        }
+        std::string res = list[0];
+        for (std::size_t i = 1; i < list.size(); i++) {
+            res += delimiter;
+            res += list[i];
+        }
+        return res;
+    }
+
 } // end of utils namespace

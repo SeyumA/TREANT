@@ -9,6 +9,7 @@
 #include "Dataset.h"
 #include "DecisionTree.h"
 #include "SplitOptimizer.h"
+#include "utils.h"
 
 class Foo {
 public:
@@ -147,6 +148,24 @@ int main(int argc, char **argv) {
     }
     return {attackerFile, datasetFile, maxDepth, budget, threads};
   }(argc, argv);
+
+  const auto [rows, columnNames] = Dataset::getDatasetInfoFromFile(datasetFile);
+  const unsigned cols = columnNames.size();
+  feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
+  label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
+  const auto [isNumerical, notNumericalEntries] = Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
+  std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size() << std::endl;
+
+  Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
+          utils::join(notNumericalEntries, ','),
+          utils::join(columnNames, ','));
+  std::cout << "The notNumericalEntries size is: " << notNumericalEntries.size() << std::endl;
+  std::cout << "Dataset:\n" << dataset << std::endl;
+
+  // Free memory
+  free((void *) X);
+  free((void *) y);
+
 
 //  Dataset dataset(datasetFile);
 //  std::cout << dataset << std::endl << std::endl;

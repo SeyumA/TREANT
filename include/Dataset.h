@@ -36,10 +36,10 @@ public:
   static std::pair<unsigned, std::vector<std::string>>
   getDatasetInfoFromFile(const std::string &datasetFilePath);
 
-  // Fills vectors X and y and returns notNumericalEntries and isNumerical
+  // Fills vectors X and y and returns isNumerical and notNumericalEntries
   static std::pair<std::vector<std::string>, std::vector<std::string>>
   fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
-            double *y, const std::string &datasetFilePath);
+                    double *y, const std::string &datasetFilePath);
 
   // These functions are needed for node
   [[nodiscard]] const std::vector<label_t> &getLabels() const;

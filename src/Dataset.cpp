@@ -226,12 +226,12 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
                                "the map must be a bijective function");
     }
   }
-  // Assuming X entries are stored with C order
+  // Assuming X entries are stored column-wise
   featureColumns_.resize(cols);
   // Copy the dataset
   std::size_t counter = 0;
-  for (std::size_t i{0}; i < rows; ++i) {
-    for (auto &col : featureColumns_) {
+  for (auto &col : featureColumns_) {
+    for (std::size_t i = 0; i < rows; ++i) {
       col.push_back(X[counter]);
       counter++;
     }
@@ -254,7 +254,7 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
     }
     std::cout << std::endl;
   }
-  // Update the labels
+  // Update the labelVector_
   labelVector_.resize(rows);
   for (std::size_t i{0}; i < rows; ++i) {
     labelVector_[i] = y[i];
@@ -317,7 +317,7 @@ Dataset::getDatasetInfoFromFile(const std::string &datasetFilePath) {
   } else {
     throw std::runtime_error("Cannot read the first line");
   }
-  // Check for duplicates
+  // Check for duplicates in the column names
   if (columnNames.size() !=
       std::set<std::string>(columnNames.begin(), columnNames.end()).size()) {
     throw std::runtime_error(
@@ -349,6 +349,7 @@ Dataset::fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
     throw std::runtime_error("Cannot read the first line with headers");
   }
   std::vector<std::string> isNumerical;
+  index_t currMapValue = 0;
   unsigned i = 0;
   while (std::getline(ifs, line)) {
     std::istringstream is(line);
@@ -362,10 +363,10 @@ Dataset::fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
           featureValue = std::stod(token);
         } catch (std::exception &) {
           isNumericalFlag = false;
-          if (catToIndex.find(token) != catToIndex.end()) {
-            const auto mapSize = catToIndex.size();
-            featureValue = static_cast<feature_t>(mapSize);
-            catToIndex[token] = mapSize;
+          if (catToIndex.find(token) == catToIndex.end()) {
+            featureValue = static_cast<feature_t>(currMapValue);
+            catToIndex[token] = currMapValue;
+            currMapValue++;
           } else {
             featureValue = static_cast<feature_t>(catToIndex[token]);
           }
@@ -376,11 +377,14 @@ Dataset::fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
           if (i == 0) {
             isNumerical.push_back(isNumericalFlag ? "True" : "False");
           }
-          // Update X
+          // Update X (even if the file is read row by row, the ordering is
+          // column wise in X
           X[j * rows + i] = featureValue;
+        } else if (j == cols) {
+          y[i] = featureValue;
         } else {
-          throw std::runtime_error(
-              "the file has more cols of the one specified");
+          throw std::runtime_error("the file has more cols of the one "
+                                   "specified including also the labels");
         }
         // Update the column counter
         j++;
