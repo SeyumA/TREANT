@@ -137,7 +137,7 @@ Dataset::Dataset(const std::string &featureFilePath)
             labelVector_.emplace_back(1.0);
           } else {
             throw std::runtime_error(
-                utils::format("Invalid binary label at line {}, allowed label"
+                utils::format("Invalid binary label at line {}, allowed label "
                               "are '0', '1'",
                               countLines));
           }
@@ -146,10 +146,9 @@ Dataset::Dataset(const std::string &featureFilePath)
           if (isNumerical != featureIsNumeric_[j]) {
             const std::string type =
                 featureIsNumeric_[j] ? "numerical" : "categorical";
-            throw std::runtime_error(
-                utils::format("The feature '{}' at line {} is supposed to be "
-                              "{} but it is not",
-                              token, type));
+            throw std::runtime_error(utils::format(
+                "The feature '{}' at line {} is supposed to be {} but it is not",
+                token, type));
           }
           featureColumns_[jj].push_back(valueToInsert);
           jj++;

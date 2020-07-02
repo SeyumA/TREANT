@@ -94,8 +94,7 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
   // At the beginning all the features and all the rows are active
   std::vector<std::size_t> rows(dataset.size());
   std::iota(rows.begin(), rows.end(), 0);
-//  std::vector<std::size_t> validFeatures(dataset.getFeatureColumns().size());
-  std::vector<std::size_t> validFeatures(dataset.cols_);
+  std::vector<std::size_t> validFeatures(dataset.getFeatureColumns().size());
   std::iota(validFeatures.begin(), validFeatures.end(), 0);
   // At the beginning all the costs are equal to 0.0 (one for each row)
   std::unordered_map<index_t, cost_t> costs;
