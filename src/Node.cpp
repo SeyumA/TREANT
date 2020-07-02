@@ -2,12 +2,70 @@
 // Created by dg on 14/01/20.
 //
 
+#include <unordered_map>
+
 #include "Node.h"
 #include "utils.h"
+
+namespace keys {
+    // leaf keys
+    static const std::string Prediction = "Prediction";
+    static const std::string Score = "Score";
+    static const std::string NumInstances = "Num_instances";
+    static const std::string Loss = "Loss";
+    // internal node keys (also NumInstances and Loss)
+    static const std::string FeatureID = "Feature_ID";
+    static const std::string Threshold = "Threshold";
+    static const std::string Description = "Description";
+    static const std::string Gain = "Gain";
+    static const std::string NumConstraints = "Num_constraints";
+}
 
 Node::Node(std::size_t instancesAtTrain, label_t prediction)
     : instancesAtTrain_(instancesAtTrain), prediction_(prediction), bestSplitFeatureId_(std::nullopt),
       bestSplitFeatureValue_(std::nullopt), left_(nullptr), right_(nullptr) {}
+
+Node::Node(const std::string& s) {
+    std::unordered_map<std::string,std::string> map;
+    std::istringstream iss(s);
+    std::string token;
+    char delimiter = ',';
+    char splitter = ':';
+    while (std::getline(iss, token, delimiter)) {
+        const auto found = token.find(splitter);
+        if (found == std::string::npos) {
+            throw std::runtime_error("Cannot split: " + token);
+        }
+        const auto key = token.substr(0, found);
+        const auto value = token.substr(found + 1);
+        map[key] = value;
+    }
+
+    if (map.find(keys::Threshold) == map.end()) {
+        // leaf
+        instancesAtTrain_ = std::stoul(map[keys::NumInstances]);
+        lossValue_ = std::stod(map[keys::Loss]);
+        bestSplitFeatureId_ = std::nullopt;
+        bestSplitFeatureValue_ = std::nullopt;
+        left_ = nullptr;
+        right_ = nullptr;
+    } else {
+        // internal node
+        instancesAtTrain_ = std::stoul(map[keys::NumInstances]);
+        lossValue_ = std::stod(map[keys::Loss]);
+        gainValue_ = std::stod(map[keys::Gain]);
+        bestSplitFeatureId_ = std::stoul(map[keys::FeatureID]);
+        bestSplitFeatureValue_ = std::stod(map[keys::Threshold]);
+        if (map.find(keys::Description) != map.end()) {
+            bestSplitValueDescription_ = map[keys::Description];
+        }else {
+            bestSplitValueDescription_ = std::nullopt;
+        }
+        constraints_ = std::stoul(map[keys::NumConstraints]);
+        left_ = nullptr;
+        right_ = nullptr;
+    }
+}
 
 Node::~Node() {
   delete left_;
@@ -88,16 +146,19 @@ label_t Node::predict(const feature_t *record, const bool score) const {
 }
 
 std::string Node::stringify() const {
+  // TODO: enhance this one in order to have a better approximation
   if (!left_ && !right_) {
-    return utils::format("Prediction:{},Score:{},Num_instances:{},Loss:{}",
-                         prediction_, predictionScore_,
-                         instancesAtTrain_, lossValue_);
+    return utils::format("{}:{},{}:{},{}:{},{}:{}",
+                         keys::Prediction, prediction_, keys::Score, predictionScore_, keys::NumInstances,
+                         instancesAtTrain_, keys::Loss, lossValue_);
   }
-  return utils::format("Feature_ID:{},Threshold:{},Num_instances:{},Loss:{},"
-                       "Gain:{},Num_constraints:{}",
-                       bestSplitFeatureId_.value(),
+  return utils::format("{}:{},{}:{}{},{}:{},{}:{},"
+                       "{}:{},{}:{}",
+                       keys::FeatureID, bestSplitFeatureId_.value(),
+                       keys::Threshold, bestSplitFeatureValue_.value(),
                        bestSplitValueDescription_.has_value()
-                           ? utils::format("'{}'", bestSplitValueDescription_.value())
-                           : std::to_string(bestSplitFeatureValue_.value()),
-                       instancesAtTrain_, lossValue_, gainValue_, constraints_);
+                           ? utils::format(",{}:{}", keys::Description, bestSplitValueDescription_.value())
+                           : "",
+                       keys::NumInstances, instancesAtTrain_, keys::Loss, lossValue_, keys::Gain, gainValue_,
+                       keys::NumConstraints, constraints_);
 }

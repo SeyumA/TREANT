@@ -14,6 +14,7 @@ class Node {
 
 public:
   explicit Node(std::size_t instancesAtTrain, label_t prediction);
+  explicit Node(const std::string& s);
   ~Node();
 
   void setLeft(Node* left);

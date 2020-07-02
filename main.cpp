@@ -8,11 +8,12 @@
 
 #include "Dataset.h"
 #include "DecisionTree.h"
+#include "Node.h"
 #include "SplitOptimizer.h"
 #include "utils.h"
 
-#include <iomanip>
 #include <fstream>
+#include <iomanip>
 
 class Foo {
 public:
@@ -31,7 +32,6 @@ public:
               << std::setprecision(std::numeric_limits<double>::max_digits10)
               << data << std::endl;
   }
-
 
 private:
   double data;
@@ -57,19 +57,24 @@ void printFoo(const Foo *foo, int lev) {
 
 int main(int argc, char **argv) {
 
-//  std::ofstream myfile;
-//  myfile.open ()
-//  Foo *foo1 = new Foo(1.1);
-//  Foo *foo2 = new Foo(2.2);
-//  Foo *foo3 = new Foo(3.3, foo1, foo2);
-//  Foo *foo4 = new Foo(4.4);
-//  Foo *foo5 = new Foo(5.5);
-//  Foo *foo6 = new Foo(6.6, foo4, foo5);
-//  Foo *foo7 = new Foo(7.7, foo6, foo3);
-//  //foo7->print();
-//  printFoo(foo7, 0);
-//  delete foo7;
-//  std::cout << "Finish printing\n";
+  const std::string s =
+      "Feature_ID:4,Threshold:11.000000,Description:Married-civ-spouse,Num_"
+      "instances:1000,Loss:154.444294,Gain:33.554706,Num_constraints:0";
+  Node nodeTest(s);
+
+  //  std::ofstream myfile;
+  //  myfile.open ()
+  //  Foo *foo1 = new Foo(1.1);
+  //  Foo *foo2 = new Foo(2.2);
+  //  Foo *foo3 = new Foo(3.3, foo1, foo2);
+  //  Foo *foo4 = new Foo(4.4);
+  //  Foo *foo5 = new Foo(5.5);
+  //  Foo *foo6 = new Foo(6.6, foo4, foo5);
+  //  Foo *foo7 = new Foo(7.7, foo6, foo3);
+  //  //foo7->print();
+  //  printFoo(foo7, 0);
+  //  delete foo7;
+  //  std::cout << "Finish printing\n";
 
   //  double X[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   //  const unsigned rows = 5;
@@ -221,7 +226,6 @@ int main(int argc, char **argv) {
     fs << dt;
   }
   fs.close();
-
 
   // Get X as C-order
   feature_t *X_test = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
