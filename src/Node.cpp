@@ -55,8 +55,9 @@ void Node::setBestSplitValueDescription(const std::string &description) {
 label_t Node::predict(const feature_t *record) const {
 
   if (!left_ && !right_) {
-    // leaf
-    return getNodePrediction();
+    // leaf: get the node predicion score (see orginal python code where they choose
+    // getNodePrediction()[1] because getNodePrediction returns a tuple
+    return getNodePredictionScore();
   } else if (left_ && right_) {
     // internal node
     if (!(bestSplitFeatureId_.has_value() &&
