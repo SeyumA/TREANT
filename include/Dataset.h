@@ -35,6 +35,7 @@ public:
   getDatasetInfoFromFile(const std::string &datasetFilePath);
 
   // Fills vectors X and y and returns isNumerical and notNumericalEntries
+  // Note: matrix X containing the features is filled in column-wise order
   static std::pair<std::vector<std::string>, std::vector<std::string>>
   fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
                     double *y, const std::string &datasetFilePath);

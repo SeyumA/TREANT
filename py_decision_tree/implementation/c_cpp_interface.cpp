@@ -14,8 +14,8 @@ void py_decision_tree_predict(const py_decision_tree_context_t *context,
                               const double *X,
                               const unsigned rows,
                               const unsigned cols,
-                              double *predictions) {
-  return AS_CTYPE(PyDecisionTree, context)->predict(X, rows, cols, predictions);
+                              double *predictions, const bool score, const bool isRowsWise) {
+  return AS_CTYPE(PyDecisionTree, context)->predict(X, rows, cols, predictions, score, isRowsWise);
 }
 
 void py_decision_tree_fit(py_decision_tree_context_t *context,
@@ -30,14 +30,18 @@ void py_decision_tree_fit(py_decision_tree_context_t *context,
                           const double budget,
                           const unsigned threads,
                           const bool useICML2019,
-                          const unsigned maxDepth) {
+                          const unsigned maxDepth,
+                          const unsigned int minPerNode,
+                          const bool isAffine) {
 
   return AS_TYPE(PyDecisionTree, context)->fit(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames,
                                                attackerFile,
                                                budget,
                                                threads,
                                                useICML2019,
-                                               maxDepth);
+                                               maxDepth,
+                                               minPerNode,
+                                               isAffine);
 }
 
 bool py_decision_tree_is_trained(const py_decision_tree_context_t *context) {

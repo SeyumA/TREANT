@@ -16,9 +16,9 @@ PyDecisionTree::~PyDecisionTree() {
   is_initialized = false;
 }
 
-void PyDecisionTree::predict(const double *X, const unsigned rows, const unsigned cols, double *predictions) const {
+void PyDecisionTree::predict(const double *X, const unsigned rows, const unsigned cols, double *predictions, const bool score, const bool isRowsWise) const {
   assert(is_initialized);
-  decisionTree_.predict(X, rows, cols, predictions);
+  decisionTree_.predict(X, rows, cols, predictions, score, isRowsWise);
 }
 
 void PyDecisionTree::fit(const double *X,
@@ -32,11 +32,13 @@ void PyDecisionTree::fit(const double *X,
                          const double budget,
                          const unsigned threads,
                          const bool useICML2019,
-                         unsigned int maxDepth) {
+                         const unsigned int maxDepth,
+                         const unsigned int minPerNode,
+                         const bool isAffine) {
   assert(is_initialized);
 
   Dataset ds(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames);
-  decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019, maxDepth);
+  decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019, maxDepth, minPerNode, isAffine);
 }
 
 bool PyDecisionTree::is_trained() const {

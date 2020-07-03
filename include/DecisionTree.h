@@ -41,8 +41,8 @@ public:
            const cost_t &budget, const unsigned &threads,
            const bool &useICML2019,
            const unsigned &maxDepth,
-           const unsigned minPerNode = 20,
-           const bool isAffine = false,
+           const unsigned minPerNode,
+           const bool isAffine,
            const Impurity impurityType = Impurity::SSE);
 
   [[nodiscard]] bool isTrained() const;
