@@ -2,10 +2,9 @@
 
 // External files
 #include "Dataset.h"
-
+// STL
 #include <cassert>
-//Just for logging
-#include <iostream>
+
 
 PyDecisionTree::PyDecisionTree() :
     decisionTree_(DecisionTree()) , is_initialized(true) {
