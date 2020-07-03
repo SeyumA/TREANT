@@ -50,6 +50,8 @@ new = _lib.py_decision_tree_new
 free = _lib.py_decision_tree_free
 fit = _lib.py_decision_tree_fit
 predict = _lib.py_decision_tree_predict
+load = _lib.py_decision_tree_load
+save = _lib.py_decision_tree_save
 is_trained = _lib.py_decision_tree_is_trained
 pretty_print = _lib.py_decision_tree_pretty_print
 
@@ -59,6 +61,8 @@ __all__ = [
     'free',
     'fit',
     'predict',
+    'load',
+    'save',
     'is_trained',
     'pretty_print'
 ]

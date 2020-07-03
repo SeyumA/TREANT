@@ -26,6 +26,9 @@ public:
 
   bool is_trained() const;
 
+  void load(const char *filePath);
+  void save(const char *filePath) const;
+
   void pretty_print() const;
 
 private:

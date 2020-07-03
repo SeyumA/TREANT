@@ -48,6 +48,14 @@ bool py_decision_tree_is_trained(const py_decision_tree_context_t *context) {
   return AS_CTYPE(PyDecisionTree, context)->is_trained();
 }
 
+void py_decision_tree_load(py_decision_tree_context_t *context, const char *filePath) {
+  return AS_TYPE(PyDecisionTree, context)->load(filePath);
+}
+
+void py_decision_tree_save(const py_decision_tree_context_t *context, const char *filePath) {
+  return AS_CTYPE(PyDecisionTree, context)->save(filePath);
+}
+
 void py_decision_tree_pretty_print(const py_decision_tree_context_t *context) {
   return AS_CTYPE(PyDecisionTree, context)->pretty_print();
 }

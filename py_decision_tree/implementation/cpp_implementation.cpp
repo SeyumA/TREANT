@@ -4,6 +4,7 @@
 #include "Dataset.h"
 // STL
 #include <cassert>
+#include <iostream>  // see pretty_print
 
 
 PyDecisionTree::PyDecisionTree() :
@@ -42,6 +43,14 @@ void PyDecisionTree::fit(const double *X,
 
 bool PyDecisionTree::is_trained() const {
   return decisionTree_.isTrained();
+}
+
+void PyDecisionTree::load(const char *filePath) {
+  return decisionTree_.load(filePath);
+}
+
+void PyDecisionTree::save(const char *filePath) const {
+  return decisionTree_.save(filePath);
 }
 
 void PyDecisionTree::pretty_print() const {
