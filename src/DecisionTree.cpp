@@ -7,8 +7,6 @@
 #include <numeric>
 #include <regex>
 #include <stack>
-// For debug
-#include <iostream>
 
 #include "Attacker.h"
 #include "Constraint.h"
