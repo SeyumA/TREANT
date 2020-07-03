@@ -160,32 +160,10 @@ int main(int argc, char **argv) {
     return {attackerFile, datasetFile, maxDepth, budget, threads};
   }(argc, argv);
 
-  //  // Build a dataset with pointers
-  //  -------------------------------------------------------------------------
-  //  const auto [rows, columnNames] =
-  //  Dataset::getDatasetInfoFromFile(datasetFile); const unsigned cols =
-  //  columnNames.size(); feature_t *X = (feature_t *)malloc(sizeof(feature_t) *
-  //  rows * cols); label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
-  //  const auto [isNumerical, notNumericalEntries] =
-  //  Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile); std::cout <<
-  //  "The notNumericalEntries size is:" << notNumericalEntries.size() <<
-  //  std::endl;
-  //
-  //  Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
-  //          utils::join(notNumericalEntries, ','),
-  //          utils::join(columnNames, ','));
-  //  std::cout << "The notNumericalEntries size is: " <<
-  //  notNumericalEntries.size() << std::endl; std::cout << "Dataset:\n" <<
-  //  dataset << std::endl;
-  //
-  //  // Free memory
-  //  free((void *) X);
-  //  free((void *) y);
-  // //
-  // --------------------------------------------------------------------------------------------------------
-
+  // Allocate dataset matrix X and label vector y
   const auto [rows, columnNames] = Dataset::getDatasetInfoFromFile(datasetFile);
   const unsigned cols = columnNames.size();
+  // The principal program must manage the memory of X and Y
   feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
   label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
   const auto [isNumerical, notNumericalEntries] =
@@ -196,16 +174,20 @@ int main(int argc, char **argv) {
   Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
                   utils::join(notNumericalEntries, ','),
                   utils::join(columnNames, ','));
-  //  Dataset dataset(datasetFile);
   std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
-  DecisionTree dt(maxDepth);
+  DecisionTree dt;
+  //
   const bool useICML2019 = false;
+  // minimum instances per node (under this threshold the node became a leaf)
+  const unsigned minPerNode = 20;
+  const bool isAffine = false;
   //  const bool useICML2019 = true;
 
   {
     const auto start = std::chrono::steady_clock::now();
-    dt.fit(dataset, attackerFile, budget, threads, useICML2019, Impurity::SSE);
+    dt.fit(dataset, attackerFile, budget, threads, useICML2019, maxDepth,
+           minPerNode, isAffine, Impurity::SSE);
     const auto end = std::chrono::steady_clock::now();
 
     std::cout << "The decision tree is:" << std::endl << dt << std::endl;
@@ -218,14 +200,12 @@ int main(int argc, char **argv) {
   }
 
   std::cout << "Is the decision tree trained? " << dt.isTrained() << std::endl;
+  std::cout << "Decision tree height: " << dt.getHeight() << std::endl;
+  std::cout << "Decision tree node count: " << dt.getNumberNodes() << std::endl;
 
-  const std::string file = "example.txt";
-  std::ofstream fs;
-  fs.open(file, std::ios::out | std::ios::trunc);
-  if (fs.is_open() && fs.good()) {
-    fs << dt;
-  }
-  fs.close();
+  dt.save("example.txt");
+  DecisionTree dt_copy;
+  dt_copy.load("example.txt");
 
   // Get X as C-order
   feature_t *X_test = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
@@ -237,92 +217,49 @@ int main(int argc, char **argv) {
     }
   }
   double *predictions = (double *)malloc(sizeof(double) * rows);
-  dt.predict(X_test, rows, cols, predictions, false);
-  std::cout << "Predictions:" << std::endl;
-  std::cout << static_cast<int>(predictions[0]);
+  dt.predict(X_test, rows, cols, predictions, true, false);
+  std::cout << "Predictions (rows-wise X):" << std::endl;
+  std::cout << std::setprecision(1) << predictions[0];
   for (index_t i = 1; i < rows; i++) {
-    std::cout << "," << static_cast<int>(predictions[i]);
+    std::cout << "," << std::setprecision(1) << predictions[i];
   }
   std::cout << std::endl;
+  // test the columns-wise version
+  double *predictions_column_wise = (double *)malloc(sizeof(double) * rows);
+  dt.predict(X, rows, cols, predictions_column_wise, false, false);
+  std::cout << "Predictions (column-wise X):" << std::endl;
+  std::cout << std::setprecision(1) << predictions_column_wise[0];
+  for (index_t i = 1; i < rows; i++) {
+    std::cout << "," << std::setprecision(1) << predictions_column_wise[i];
+  }
+  std::cout << std::endl;
+  // Predict with the decision tree loaded from file
+  double *predictions_copy = (double *)malloc(sizeof(double) * rows);
+  dt_copy.predict(X_test, rows, cols, predictions_copy, true, false);
+  std::cout << "Predictions of dataset loaded from file:" << std::endl;
+  std::cout << std::setprecision(1) << predictions_copy[0];
+  for (index_t i = 1; i < rows; i++) {
+    std::cout << "," << std::setprecision(1) << predictions_copy[i];
+  }
+  std::cout << std::endl;
+
+  bool areEqual = true;
+  for (index_t i = 0; i < rows && areEqual; i++) {
+    if (predictions_copy[i] != predictions[i]) {
+      std::cout << "index " << i << " is " << predictions[i] << " and "
+                << predictions_copy[i] << " on the copy side" << std::endl;
+      areEqual = false;
+    }
+  }
+  std::cout << "Are predictions equal? " << areEqual << std::endl;
 
   // Free memory
   free((void *)X);
   free((void *)y);
   free((void *)X_test);
+  free((void *)predictions);
+  free((void *)predictions_column_wise);
+  free((void *)predictions_copy);
 
-  //  //
-  //  ---------------------------------------------------------------------------
-  //  // Build another dataset with another constructor
-  //  std::cout << "\n\nBuilding a copy of the dataset" << std::endl;
-  //  const auto &dsColumns = dataset.getFeatureColumns();
-  //  const auto &dsLabels = dataset.getLabels();
-  //  unsigned cols = dsColumns.size();
-  //  unsigned rows = dsLabels.size();
-  //  double *X = (double *)malloc(sizeof(double) * cols * rows);
-  //  for (unsigned i = 0; i < rows; i++) {
-  //    for (unsigned j = 0; j < cols; j++) {
-  //      X[i * cols + j] = (dsColumns[j])[i];
-  //    }
-  //  }
-  //  double *y = (double *)malloc(sizeof(double) * rows);
-  //  for (unsigned i = 0; i < rows; i++) {
-  //    y[i] = dsLabels[i];
-  //  }
-  //  //
-  //  std::string isNumerical = dataset.isFeatureNumerical(0) ? "True" :
-  //  "False"; for (unsigned j = 1; j < cols; j++) {
-  //    isNumerical += ',';
-  //    isNumerical += dataset.isFeatureNumerical(j) ? "True" : "False";
-  //  }
-  //  //
-  //  double key = 0.0;
-  //  auto nameOpt = dataset.getCategoricalFeatureName(key);
-  //  std::string notNumericalEntries;
-  //  while (nameOpt.has_value()) {
-  //    if (!notNumericalEntries.empty()) {
-  //      notNumericalEntries += ',';
-  //    }
-  //    notNumericalEntries += nameOpt.value();
-  //    nameOpt = dataset.getCategoricalFeatureName(++key);
-  //  }
-  //  //
-  //  std::string columnNames = dataset.getFeatureName(0);
-  //  for (unsigned j = 1; j < cols; j++) {
-  //    columnNames += ',';
-  //    columnNames += dataset.getFeatureName(j);
-  //  }
-  //  Dataset dataset_copy(X, rows, cols, y, isNumerical, notNumericalEntries,
-  //                       columnNames);
-  //  DecisionTree dt_copy(maxDepth);
-  //
-  //  std::cout << "Fitting again on the copy" << std::endl;
-  //  {
-  //    const auto start = std::chrono::steady_clock::now();
-  //    dt_copy.fit(dataset_copy, attackerFile, budget, threads, useICML2019,
-  //                Impurity::SSE);
-  //    const auto end = std::chrono::steady_clock::now();
-  //
-  //    std::cout << "The decision tree is:" << std::endl << dt_copy <<
-  //    std::endl;
-  //
-  //    std::cout << "Time elapsed to fit the decision tree: "
-  //              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-  //                                                                       start)
-  //                     .count()
-  //              << " milliseconds." << std::endl;
-  //  }
-  //
-  //  std::cout << dt_copy << std::endl;
-  //
-  //  double *predictions = (double *)malloc(sizeof(double) * rows);
-  //  dt_copy.predict(X, rows, cols, predictions);
-  //  std::cout << "Predictions on the same dataset:" << std::endl;
-  //  for (unsigned i = 0; i < rows; i++) {
-  //    std::cout << static_cast<int>(predictions[i]) << std::endl;
-  //  }
-  //
-  //  free((void *)X);
-  //  free((void *)y);
-  //  free((void *)predictions);
   return 0;
 }

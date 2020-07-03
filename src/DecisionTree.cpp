@@ -2,8 +2,10 @@
 // Created by dg on 01/11/19.
 //
 
+#include <fstream>
 #include <functional>
 #include <numeric>
+#include <regex>
 #include <stack>
 // For debug
 #include <iostream>
@@ -16,22 +18,115 @@
 #include "SplitOptimizer.h"
 #include "utils.h"
 
-DecisionTree::DecisionTree(std::size_t maxDepth, bool isAffine)
-    : maxDepth_(maxDepth), isAffine_(isAffine) {}
+DecisionTree::DecisionTree() : root_(nullptr) {}
 
-std::size_t DecisionTree::getHeight() const { return height_; }
+void DecisionTree::load(const std::string &filePath) {
+
+  static std::regex childrenRegex(R"__(^\[(\d{1,}),(\d{1,})\](.*))__");
+
+  std::ifstream ifs;
+  ifs.open(filePath);
+  if (!ifs.is_open() || !ifs.good()) {
+    throw std::runtime_error(
+        "The decision tree file stream is not open or not good");
+  }
+  // Reading the first line and populate the list of column names
+  std::string line;
+  std::vector<Node *> nodePointers;
+  // Get the nodes
+  while (std::getline(ifs, line)) {
+
+    //    std::cout << "line: '" << line << "'\n";
+    std::cmatch cm; // same as std::match_results<const char*> cm;
+    // using explicit flags:
+    std::regex_match(line.c_str(), cm, childrenRegex);
+
+    if (!cm.empty()) {
+      // internal node
+      const auto leftId = std::stoi(cm[1]);
+      const auto rightId = std::stoi(cm[2]);
+      nodePointers.emplace_back(new Node(cm[3]));
+      nodePointers[nodePointers.size() - 1]->setLeft(nodePointers[leftId]);
+      nodePointers[nodePointers.size() - 1]->setRight(nodePointers[rightId]);
+    } else {
+      // leaf
+      nodePointers.emplace_back(new Node(line));
+    }
+  }
+
+  if (nodePointers.empty()) {
+    // No valid node present in the file
+    delete root_;
+    root_ = nullptr;
+  }
+
+  Node *root = nodePointers[nodePointers.size() - 1];
+  // check count in the internal struct (no isolated nodes)
+  if (nodePointers.size() != root->getSubtreeNumberNodes()) {
+    for (auto &nPtr : nodePointers) {
+      delete nPtr;
+    }
+    throw std::runtime_error("Some node is isolated (error in load " +
+                             filePath + " file");
+  }
+
+  // delete the root and its children if needed (already trained)
+  delete root_;
+  // Update the root_
+  root_ = root;
+}
+
+void DecisionTree::save(const std::string &filePath) const {
+  std::ofstream ofs;
+  ofs.open(filePath, std::ios::trunc);
+  if (!ofs.is_open() || !ofs.good()) {
+    throw std::runtime_error(
+        "The decision tree file stream is not open or not good");
+  }
+  root_->getSubtreeStruct(ofs);
+  ofs.close();
+}
+
+std::size_t DecisionTree::getHeight() const {
+  if (!root_) {
+    return 0;
+  }
+  return root_->getSubtreeHeight();
+}
+
+std::size_t DecisionTree::getNumberNodes() const {
+  if (!root_) {
+    return 0;
+  }
+  return root_->getSubtreeNumberNodes();
+}
 
 void DecisionTree::predict(const double *X, const unsigned rows,
-                           const unsigned cols, double *res, const bool score) const {
+                           const unsigned cols, double *res,
+                           const bool isRowsWise, const bool score) const {
   if (!root_) {
     throw std::runtime_error(
         "The tree is not trained, prediction cannot be done");
   }
 
-  std::size_t offset = 0;
-  for (std::size_t i = 0; i < rows; i++) {
-    res[i] = root_->predict(X + offset, score);
-    offset += cols;
+  // If the X matrix is row-wise, then we do not need extra memory
+  if (isRowsWise) {
+    std::size_t offset = 0;
+    for (std::size_t i = 0; i < rows; i++) {
+      res[i] = root_->predict(X + offset, score);
+      offset += cols;
+    }
+  } else {
+    // we need to allocate the record
+    feature_t *record = (feature_t *)malloc(sizeof(feature_t) * cols);
+    for (std::size_t i = 0; i < rows; i++) {
+      // Update the record
+      for (std::size_t j = 0; j < cols; j++) {
+        record[j] = X[j * rows + i];
+      }
+      res[i] = root_->predict(record, score);
+    }
+    free((void *)record);
   }
 }
 
@@ -74,7 +169,9 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
 
 void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
                        const cost_t &budget, const unsigned &threads,
-                       const bool &useICML2019, const Impurity impurityType) {
+                       const bool &useICML2019, const unsigned &maxDepth,
+                       const unsigned minPerNode, const bool isAffine,
+                       const Impurity impurityType) {
 
   if (threads < 1) {
     throw std::runtime_error(
@@ -111,8 +208,8 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
 
   Attacker attacker(dataset, attackerFile, budget);
   root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
-                         currentPrediction, impurityType, constraints, threads,
-                         useICML2019);
+                         currentPrediction, maxDepth, minPerNode, isAffine,
+                         impurityType, constraints, threads, useICML2019);
 
   // height_ is updated in the fitRecursively method
 }
@@ -121,9 +218,10 @@ Node *DecisionTree::fitRecursively(
     const Dataset &dataset, const indexes_t &rows,
     const indexes_t &validFeatures, std::size_t currHeight,
     const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
-    const prediction_t &nodePrediction, Impurity impurityType,
+    const prediction_t &nodePrediction, const unsigned &maxDepth,
+    const unsigned minPerNode, const bool isAffine, Impurity impurityType,
     const std::vector<Constraint> &constraints, const unsigned &numThreads,
-    const bool &useICML2019) {
+    const bool &useICML2019) const {
 
   // As input there is a node prediction (floating point)
   // so this function always returns a new Node
@@ -134,7 +232,7 @@ Node *DecisionTree::fitRecursively(
   }
 
   // First base case
-  if (currHeight > maxDepth_ || rows.empty()) {
+  if (currHeight > maxDepth || rows.empty()) {
     return nullptr;
   }
 
@@ -151,7 +249,7 @@ Node *DecisionTree::fitRecursively(
   ret->setLossValue(currentScore);
 
   // Base case -> return a leaf if max depth is reached or too few rows
-  if (currHeight == maxDepth_ || rows.size() < minPerNode_) {
+  if (currHeight == maxDepth || rows.size() < minPerNode) {
     // Returns false if the majority of the labels is false otherwise true,
     // tie case -> false.
     return ret;
@@ -191,33 +289,29 @@ Node *DecisionTree::fitRecursively(
     // Prepare for the recursive step ------------------------------------------
     // Build the validFeaturesDownstream if isAffine (see line 1646 python code)
     const indexes_t validFeaturesDownstream =
-        !this->isAffine_ ? indexes_t(validFeatures.begin(), validFeatures.end())
-                         : [&validFeatures, &bestSplitFeatureId]() {
-                             indexes_t ret;
-                             for (const auto &f : validFeatures) {
-                               if (f != bestSplitFeatureId) {
-                                 ret.emplace_back(f);
-                               }
-                             }
-                             return ret;
-                           }();
+        !isAffine ? indexes_t(validFeatures.begin(), validFeatures.end())
+                  : [&validFeatures, &bestSplitFeatureId]() {
+                      indexes_t ret;
+                      for (const auto &f : validFeatures) {
+                        if (f != bestSplitFeatureId) {
+                          ret.emplace_back(f);
+                        }
+                      }
+                      return ret;
+                    }();
     // Set the left node
-    Node *leftNode =
-        fitRecursively(dataset, bestSplitLeftFeatureId, validFeaturesDownstream,
-                       currHeight + 1, attacker, costsLeft, bestPredLeft,
-                       impurityType, constraintsLeft, numThreads, useICML2019);
+    Node *leftNode = fitRecursively(
+        dataset, bestSplitLeftFeatureId, validFeaturesDownstream,
+        currHeight + 1, attacker, costsLeft, bestPredLeft, maxDepth, minPerNode,
+        isAffine, impurityType, constraintsLeft, numThreads, useICML2019);
     ret->setLeft(leftNode);
     // Set the right node
     Node *rightNode = fitRecursively(
         dataset, bestSplitRightFeatureId, validFeaturesDownstream,
-        currHeight + 1, attacker, costsRight, bestPredRight, impurityType,
-        constraintsRight, numThreads, useICML2019);
+        currHeight + 1, attacker, costsRight, bestPredRight, maxDepth,
+        minPerNode, isAffine, impurityType, constraintsRight, numThreads,
+        useICML2019);
     ret->setRight(rightNode);
-
-    // Update the decision tree height if necessary
-    if (height_ < currHeight) {
-      height_ = currHeight;
-    }
   }
   // Set node number of constraints
   ret->setNumberConstraints(constraints.size());

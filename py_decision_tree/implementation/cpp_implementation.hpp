@@ -4,7 +4,7 @@
 
 class PyDecisionTree {
 public:
-  PyDecisionTree(unsigned int maxDepth);
+  PyDecisionTree();
   ~PyDecisionTree();
 
   void predict(const double *X, const unsigned rows, const unsigned cols, double *predictions) const;
@@ -19,7 +19,8 @@ public:
            const char *attackerFile,
            const double budget,
            const unsigned threads,
-           const bool useICML2019);
+           const bool useICML2019,
+           const unsigned maxDepth);
 
   bool is_trained() const;
 

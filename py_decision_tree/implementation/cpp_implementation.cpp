@@ -7,8 +7,8 @@
 //Just for logging
 #include <iostream>
 
-PyDecisionTree::PyDecisionTree(unsigned int maxDepth) :
-    decisionTree_(DecisionTree(maxDepth, false)) , is_initialized(true) {
+PyDecisionTree::PyDecisionTree() :
+    decisionTree_(DecisionTree()) , is_initialized(true) {
 }
 
 PyDecisionTree::~PyDecisionTree() {
@@ -31,11 +31,12 @@ void PyDecisionTree::fit(const double *X,
                          const char *attackerFile,
                          const double budget,
                          const unsigned threads,
-                         const bool useICML2019) {
+                         const bool useICML2019,
+                         unsigned int maxDepth) {
   assert(is_initialized);
 
   Dataset ds(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames);
-  decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019);
+  decisionTree_.fit(ds, attackerFile, budget, threads, useICML2019, maxDepth);
 }
 
 bool PyDecisionTree::is_trained() const {

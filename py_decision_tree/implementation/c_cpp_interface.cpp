@@ -4,8 +4,8 @@
 #define AS_TYPE(Type, Obj) reinterpret_cast<Type *>(Obj)
 #define AS_CTYPE(Type, Obj) reinterpret_cast<const Type *>(Obj)
 
-py_decision_tree_context_t *py_decision_tree_new(unsigned int maxDepth) {
-  return AS_TYPE(py_decision_tree_context_t, new PyDecisionTree(maxDepth));
+py_decision_tree_context_t *py_decision_tree_new() {
+  return AS_TYPE(py_decision_tree_context_t, new PyDecisionTree());
 }
 
 void py_decision_tree_free(py_decision_tree_context_t *context) { delete AS_TYPE(PyDecisionTree, context); }
@@ -29,13 +29,15 @@ void py_decision_tree_fit(py_decision_tree_context_t *context,
                           const char *attackerFile,
                           const double budget,
                           const unsigned threads,
-                          const bool useICML2019) {
+                          const bool useICML2019,
+                          const unsigned maxDepth) {
 
   return AS_TYPE(PyDecisionTree, context)->fit(X, rows, cols, y, isNumerical, notNumericalEntries, columnNames,
                                                attackerFile,
                                                budget,
                                                threads,
-                                               useICML2019);
+                                               useICML2019,
+                                               maxDepth);
 }
 
 bool py_decision_tree_is_trained(const py_decision_tree_context_t *context) {
