@@ -19,8 +19,11 @@ class Attacker;
 class DecisionTree final {
 
 public:
-  // Constructor
+  // Constructors
   explicit DecisionTree();
+  DecisionTree(const DecisionTree& o) = delete;
+  DecisionTree(DecisionTree&& o) = delete;
+
   // Destructor
   ~DecisionTree();
 

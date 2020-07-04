@@ -69,8 +69,9 @@ bool SplitOptimizer::optimizeGain(
   const std::vector<std::vector<index_t>> batches =
       utils::buildBatches(numThreads, validFeatures);
 
-  // Measure time
-  const auto start = std::chrono::steady_clock::now();
+//  // Measure time
+//  const auto start = std::chrono::steady_clock::now();
+
   // Default value of the gain, returns how much we can improve the current
   // score.
   bestGain = -1.0f;
@@ -112,7 +113,7 @@ bool SplitOptimizer::optimizeGain(
       }
     }
   }
-  const auto end = std::chrono::steady_clock::now();
+//  const auto end = std::chrono::steady_clock::now();
 //  std::cout << "Time elapsed in parallel SplitOptimer: "
 //            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
 //                                                                     start)

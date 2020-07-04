@@ -76,10 +76,14 @@ Node::Node(const std::string &s) {
 }
 
 Node::~Node() {
-  delete left_;
-  delete right_;
-  left_ = nullptr;
-  right_ = nullptr;
+  if (left_) {
+    delete left_;
+    left_ = nullptr;
+  }
+  if (right_) {
+    delete right_;
+    right_ = nullptr;
+  }
 }
 
 void Node::setLeft(Node *left) { left_ = left; }

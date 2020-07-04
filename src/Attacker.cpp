@@ -139,8 +139,6 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
       const std::string &nameOfTheAttackedFeature = ruleAndTypes.key();
       const index_t attackedFeatureIndex =
           dataset.getFeatureIndex(nameOfTheAttackedFeature);
-      std::cout << "name of the attacked feature is "
-                << nameOfTheAttackedFeature << std::endl;
       //
       // For each feature name I can have more than one rule
       for (const auto &type : ruleAndTypes.value().items()) {

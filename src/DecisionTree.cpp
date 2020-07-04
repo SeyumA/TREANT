@@ -7,6 +7,7 @@
 #include <numeric>
 #include <regex>
 #include <stack>
+#include <iostream>
 
 #include "Attacker.h"
 #include "Constraint.h"
@@ -53,9 +54,9 @@ void DecisionTree::load(const std::string &filePath) {
   }
 
   if (nodePointers.empty()) {
-    // No valid node present in the file
-    delete root_;
-    root_ = nullptr;
+    std::cout << "No valid node present in the file\n";
+//    delete root_;
+//    root_ = nullptr;
   }
 
   Node *root = nodePointers[nodePointers.size() - 1];
@@ -72,6 +73,7 @@ void DecisionTree::load(const std::string &filePath) {
   delete root_;
   // Update the root_
   root_ = root;
+//  root_.reset(nullptr);
 }
 
 void DecisionTree::save(const std::string &filePath) const {
@@ -171,6 +173,12 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
                        const unsigned minPerNode, const bool isAffine,
                        const Impurity impurityType) {
 
+  // Check if the tree is already trained
+  if (isTrained()) {
+    delete root_;
+    root_ = nullptr;
+  }
+
   if (threads < 1) {
     throw std::runtime_error(
         "Invalid threads parameter in fit function, it must be > 0");
@@ -208,8 +216,6 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
   root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
                          currentPrediction, maxDepth, minPerNode, isAffine,
                          impurityType, constraints, threads, useICML2019);
-
-  // height_ is updated in the fitRecursively method
 }
 
 Node *DecisionTree::fitRecursively(
