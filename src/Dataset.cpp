@@ -54,7 +54,7 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
   }
   // Update is numerical
   {
-    std::cout << "isNumerical: " << isNumerical << std::endl;
+    //std::cout << "isNumerical: " << isNumerical << std::endl;
     std::istringstream iss(isNumerical);
     std::string token;
     char delimiter = ',';
@@ -69,7 +69,7 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
   }
   // Assign feature names
   {
-    std::cout << "columnNames: " << columnNames << std::endl;
+    //std::cout << "columnNames: " << columnNames << std::endl;
     std::istringstream iss(columnNames);
     std::string token;
     char delimiter = ',';

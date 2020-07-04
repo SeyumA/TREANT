@@ -16,7 +16,8 @@ PyDecisionTree::~PyDecisionTree() {
   is_initialized = false;
 }
 
-void PyDecisionTree::predict(const double *X, const unsigned rows, const unsigned cols, double *predictions, const bool score, const bool isRowsWise) const {
+void PyDecisionTree::predict(const double *X, const unsigned rows, const unsigned cols, double *predictions,
+                             const bool score, const bool isRowsWise) const {
   assert(is_initialized);
   decisionTree_.predict(X, rows, cols, predictions, score, isRowsWise);
 }

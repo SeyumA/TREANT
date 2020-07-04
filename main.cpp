@@ -13,80 +13,26 @@
 #include "utils.h"
 
 #include <fstream>
+#include <future>
 #include <iomanip>
 
-class Foo {
-public:
-  Foo(double data) : data(data), left(0), right(0) {}
-  Foo(double data, Foo *left, Foo *right)
-      : data(data), left(left), right(right) {}
-
-  ~Foo() {
-    std::cout << "Deleting node with " << data << std::endl;
-    delete left;
-    delete right;
+static double calculateSum(const Dataset &dataset,
+                           const indexes_t &columnIndexes) {
+  double sum = 0.0;
+  unsigned times = 100000;
+  for (unsigned t = 0; t < times; t++) {
+    sum = 0.0;
+    for (const auto &j : columnIndexes) {
+      for (std::size_t i = 0; i < dataset.rows_; i++) {
+        sum += dataset(i, j);
+      }
+    }
   }
-
-  void print() const {
-    std::cout << "data is: "
-              << std::setprecision(std::numeric_limits<double>::max_digits10)
-              << data << std::endl;
-  }
-
-private:
-  double data;
-
-public:
-  Foo *left;
-  Foo *right;
-};
-
-void printFoo(const Foo *foo, int lev) {
-  if (!foo) {
-    return;
-  }
-  for (int i = 0; i < lev; i++) {
-    std::cout << '\t';
-  }
-  foo->print();
-  if (foo->left && foo->right) {
-    printFoo(foo->left, lev + 1);
-    printFoo(foo->right, lev + 1);
-  }
+  std::cout << "sum = " << sum << std::endl;
+  return sum;
 }
 
 int main(int argc, char **argv) {
-
-  const std::string s =
-      "Feature_ID:4,Threshold:11.000000,Description:Married-civ-spouse,Num_"
-      "instances:1000,Loss:154.444294,Gain:33.554706,Num_constraints:0";
-  Node nodeTest(s);
-
-  //  std::ofstream myfile;
-  //  myfile.open ()
-  //  Foo *foo1 = new Foo(1.1);
-  //  Foo *foo2 = new Foo(2.2);
-  //  Foo *foo3 = new Foo(3.3, foo1, foo2);
-  //  Foo *foo4 = new Foo(4.4);
-  //  Foo *foo5 = new Foo(5.5);
-  //  Foo *foo6 = new Foo(6.6, foo4, foo5);
-  //  Foo *foo7 = new Foo(7.7, foo6, foo3);
-  //  //foo7->print();
-  //  printFoo(foo7, 0);
-  //  delete foo7;
-  //  std::cout << "Finish printing\n";
-
-  //  double X[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  //  const unsigned rows = 5;
-  //  const unsigned cols = 2;
-  //  double y[] = {0, 0, 0, 1, 1};
-  //  int isNumerical[] = {0, 1};
-  //  const std::string notNumericalEntries = "mamma,mia,che,paura,ho";
-  //  const std::string columnNames = "age,workclass";
-  //
-  //  Dataset ds1(X, rows, cols, y, isNumerical, notNumericalEntries,
-  //  columnNames); std::cout << ds1.isFeatureNumerical(0) << std::endl;
-  //  std::cout << ds1.isFeatureNumerical(1) << std::endl;
 
   if (argc < 2) {
     std::cout << "Usage: possible flags are:\n"
@@ -176,8 +122,43 @@ int main(int argc, char **argv) {
                   utils::join(columnNames, ','));
   std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
-  DecisionTree dt;
+
+  std::cout << "threads = " << threads << std::endl;
+
+  {
+    const auto start = std::chrono::steady_clock::now();
+    std::vector<std::future<double>> sums;
+    for (int t(0); t < threads; t++) {
+      indexes_t ids;
+      std::cout << "Thread " << t << std::endl;
+      for (int j(0); j < (int)cols; j++) {
+        if (j % threads == t) {
+          ids.push_back(j);
+          std::cout << "\t" << j << std::endl;
+        }
+      }
+      sums.emplace_back(
+          std::async(std::launch::async, calculateSum, dataset, ids));
+    }
+    double mean = sums.begin()->get();
+    for (int t(1); t < threads; t++) {
+      mean += sums[t].get();
+    }
+    mean /= (dataset.rows_ * dataset.cols_);
+    const auto end = std::chrono::steady_clock::now();
+
+    std::cout << "Time elapsed: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                     .count()
+              << " milliseconds." << std::endl;
+    std::cout << "mean = " << mean << std::endl;
+  }
+
+  return 0;
+
   //
+  DecisionTree dt;
   const bool useICML2019 = false;
   // minimum instances per node (under this threshold the node became a leaf)
   const unsigned minPerNode = 20;
