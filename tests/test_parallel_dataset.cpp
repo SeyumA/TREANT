@@ -1,3 +1,7 @@
+//
+// Created by dg on 04/07/20.
+//
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -16,6 +20,21 @@
 #include <future>
 #include <iomanip>
 
+static double calculateSum(const Dataset &dataset,
+                           const indexes_t &columnIndexes) {
+  double sum = 0.0;
+  unsigned times = 100000;
+  for (unsigned t = 0; t < times; t++) {
+    sum = 0.0;
+    for (const auto &j : columnIndexes) {
+      for (std::size_t i = 0; i < dataset.rows_; i++) {
+        sum += dataset(i, j);
+      }
+    }
+  }
+  std::cout << "sum = " << sum << std::endl;
+  return sum;
+}
 
 int main(int argc, char **argv) {
 
@@ -105,41 +124,40 @@ int main(int argc, char **argv) {
   Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
                   utils::join(notNumericalEntries, ','),
                   utils::join(columnNames, ','));
-//  std::cout << dataset << std::endl << std::endl;
+  std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
+
   std::cout << "threads = " << threads << std::endl;
-  //
-  DecisionTree dt;
-  const bool useICML2019 = false;
-  // minimum instances per node (under this threshold the node became a leaf)
-  const unsigned minPerNode = 20;
-  const bool isAffine = false;
-  //  const bool useICML2019 = true;
 
   {
     const auto start = std::chrono::steady_clock::now();
-    dt.fit(dataset, attackerFile, budget, threads, useICML2019, maxDepth,
-           minPerNode, isAffine, Impurity::SSE);
+    std::vector<std::future<double>> sums;
+    for (int t(0); t < threads; t++) {
+      indexes_t ids;
+      std::cout << "Thread " << t << std::endl;
+      for (int j(0); j < (int)cols; j++) {
+        if (j % threads == t) {
+          ids.push_back(j);
+          std::cout << "\t" << j << std::endl;
+        }
+      }
+      sums.emplace_back(
+          std::async(std::launch::async, calculateSum, dataset, ids));
+    }
+    double mean = sums.begin()->get();
+    for (int t(1); t < threads; t++) {
+      mean += sums[t].get();
+    }
+    mean /= (dataset.rows_ * dataset.cols_);
     const auto end = std::chrono::steady_clock::now();
 
-    std::cout << "The decision tree is:" << std::endl << dt << std::endl;
-
-    std::cout << "Time elapsed to fit the decision tree: "
+    std::cout << "Time elapsed: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                        start)
                      .count()
               << " milliseconds." << std::endl;
+    std::cout << "mean = " << mean << std::endl;
   }
-
-  std::cout << "Is the decision tree trained? " << dt.isTrained() << std::endl;
-  std::cout << "Decision tree height: " << dt.getHeight() << std::endl;
-  std::cout << "Decision tree node count: " << dt.getNumberNodes() << std::endl;
-
-  // Free memory
-  free((void *)X);
-  free((void *)y);
-
-
 
   return 0;
 }

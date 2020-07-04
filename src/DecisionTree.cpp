@@ -222,7 +222,8 @@ Node *DecisionTree::fitRecursively(
     const bool &useICML2019) const {
 
   // As input there is a node prediction (floating point)
-  // so this function always returns a new Node
+  // so this function always returns a new Node or null pointer (see first base
+  // case)
 
   if (dataset.empty()) {
     throw std::runtime_error("ERROR DecisionTree::fitRecursively: Invalid "
@@ -297,19 +298,22 @@ Node *DecisionTree::fitRecursively(
                       }
                       return ret;
                     }();
-    // Set the left node
+    // Get the left node
     Node *leftNode = fitRecursively(
         dataset, bestSplitLeftFeatureId, validFeaturesDownstream,
         currHeight + 1, attacker, costsLeft, bestPredLeft, maxDepth, minPerNode,
         isAffine, impurityType, constraintsLeft, numThreads, useICML2019);
-    ret->setLeft(leftNode);
-    // Set the right node
+    // Get the right node
     Node *rightNode = fitRecursively(
         dataset, bestSplitRightFeatureId, validFeaturesDownstream,
         currHeight + 1, attacker, costsRight, bestPredRight, maxDepth,
         minPerNode, isAffine, impurityType, constraintsRight, numThreads,
         useICML2019);
-    ret->setRight(rightNode);
+    // Make sure that we get a leaf or an internal node (leave left and right as nullptr)
+    if (leftNode && rightNode) {
+      ret->setLeft(leftNode);
+      ret->setRight(rightNode);
+    }
   }
   // Set node number of constraints
   ret->setNumberConstraints(constraints.size());

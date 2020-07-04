@@ -217,9 +217,12 @@ std::string Node::stringify() const {
        << gainValue_ << ',';
     ss << keys::NumConstraints << ':' << constraints_;
     return ss.str();
+  } else if (!left_) {
+    return "WARNING: this node has left node equal to null (" +
+           std::to_string(instancesAtTrain_) + " instances fall into it)";
   }
-
-  throw std::runtime_error("Node is not a leaf or an internal node");
+  return "WARNING: this node has right node equal to null (" +
+         std::to_string(instancesAtTrain_) + " instances fall into it)";
 }
 
 // std::ostream &os can be a file stream, freeId is the free ID propagated

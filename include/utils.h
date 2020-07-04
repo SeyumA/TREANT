@@ -9,39 +9,19 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <tuple>
+#include <unordered_map>
 
 class Node;
 class Dataset;
-class IFeatureVectorVisitor;
+class Constraint;
+class Attacker;
 
 namespace utils {
 
 std::map<std::string, std::string> get_options_map(const std::string &args);
 
-/**
- * Recursively builds a decision tree
- * @param dataset the original dataset
- * @param subset is a vector of indexes that picks a subset of the dataset
- * @param splitter the ISplitter used to find the best split for this tree
- * @param maxDepth the maximum depth of the resulting tree
- * @param currDepth the depth of the current node
- * @param visitor is the IFeatureVisitor used to visit the nodes and build the
- * tree
- * @return a pair containing the tree root and the height of the tree rooted by
- * the first output
- */
-std::pair<Node *, std::size_t>
-buildRecursively(const Dataset &dataset, const std::size_t &maxHeight,
-                 const std::size_t &currDepth, IFeatureVectorVisitor *visitor
-                 //, attacker,
-                 // cost,
-                 // nodePrediction,
-                 // featureBlackList,
-                 // constraints
-                 // ...
-                 );
-
-std::string join(const std::vector<std::string>& list, const char delimiter);
+std::string join(const std::vector<std::string> &list, const char delimiter);
 
 template <typename S1, typename S2> std::string concatenate(S1 s1, S2 s2) {
   std::stringstream ss;
@@ -69,6 +49,47 @@ std::string format(std::string firstArg, First head, Types... args) {
     return concatenate(firstArg.substr(0, pos), head) + trailPart;
   }
 }
+//
+//// Parallel split optimizer
+// static double sseCostFunction(const std::vector<double> &x,
+//                              std::vector<double> &grad, void *data);
+//
+// static double constraintFunction(const std::vector<double> &x,
+//                                 std::vector<double> &grad, void *data);
+
+struct OptimizeOutput {
+  gain_t bestGain;
+  index_t bestSplitFeatureId;
+  split_value_t bestSplitValue;
+  split_value_t bestNextSplitValue;
+  prediction_t bestPredLeft;
+  prediction_t bestPredRight;
+  double bestSSEuma;
+};
+
+OptimizeOutput optimizeOnSubset(
+    const Dataset &dataset, const std::unordered_map<index_t, cost_t> &costs,
+    const Attacker &attacker, const indexes_t &validFeaturesSubset,
+    const indexes_t &validInstances, const std::vector<Constraint> &constraints,
+    const double &currentScore, const double &currentPredictionScore,
+    const bool &useICML2019);
+
+// Returns left, unknown, right
+std::tuple<indexes_t, indexes_t, indexes_t>
+simulateSplit(const Dataset &dataset, const indexes_t &validInstances,
+              const Attacker &attacker,
+              const std::unordered_map<index_t, cost_t> &costs,
+              const feature_t &splittingValue, const index_t &splittingFeature);
+
+std::tuple<indexes_t, indexes_t, indexes_t, bool> simulateSplitICML2019(
+    const Dataset &dataset, const indexes_t &validInstances,
+    const Attacker &attacker, const std::unordered_map<index_t, cost_t> &costs,
+    const feature_t &splittingValue, const index_t &splittingFeature,
+    label_t &yHatLeft, label_t &yHatRight, gain_t &sse);
+
+
+std::vector<indexes_t> buildBatches(const unsigned &numThreads,
+                                    const indexes_t &validFeatures);
 
 } // namespace utils
 

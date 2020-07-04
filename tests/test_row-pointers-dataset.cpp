@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
   }
 
   const auto [attackerFile, datasetFile, maxDepth, budget,
-              threads] = [](const int argc, char *const *argv)
+  threads] = [](const int argc, char *const *argv)
       -> std::tuple<std::string, std::string, std::size_t, cost_t, int> {
     std::string attackerFile, datasetFile;
     std::size_t maxDepth = 1; // default maxDepth value is 1
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
   feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
   label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
   const auto [isNumerical, notNumericalEntries] =
-      Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
+  Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
   std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size()
             << std::endl;
 
@@ -108,6 +108,7 @@ int main(int argc, char **argv) {
 //  std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
   std::cout << "threads = " << threads << std::endl;
+
   //
   DecisionTree dt;
   const bool useICML2019 = false;
@@ -127,7 +128,7 @@ int main(int argc, char **argv) {
     std::cout << "Time elapsed to fit the decision tree: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                        start)
-                     .count()
+                  .count()
               << " milliseconds." << std::endl;
   }
 
@@ -135,11 +136,63 @@ int main(int argc, char **argv) {
   std::cout << "Decision tree height: " << dt.getHeight() << std::endl;
   std::cout << "Decision tree node count: " << dt.getNumberNodes() << std::endl;
 
+  dt.save("example.txt");
+  DecisionTree dt_copy;
+  dt_copy.load("example.txt");
+
+  // Get X as C-order
+  feature_t *X_test = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
+  std::size_t index = 0;
+  for (std::size_t i = 0; i < rows; i++) {
+    for (std::size_t j = 0; j < cols; j++) {
+      X_test[index] = dataset(i, j);
+      index++;
+    }
+  }
+  double *predictions = (double *)malloc(sizeof(double) * rows);
+  dt.predict(X_test, rows, cols, predictions, true, false);
+  std::cout << "Predictions (rows-wise X):" << std::endl;
+  std::cout << std::setprecision(1) << predictions[0];
+  for (index_t i = 1; i < rows; i++) {
+    std::cout << "," << std::setprecision(1) << predictions[i];
+  }
+  std::cout << std::endl;
+  // test the columns-wise version
+  double *predictions_column_wise = (double *)malloc(sizeof(double) * rows);
+  dt.predict(X, rows, cols, predictions_column_wise, false, false);
+  std::cout << "Predictions (column-wise X):" << std::endl;
+  std::cout << std::setprecision(1) << predictions_column_wise[0];
+  for (index_t i = 1; i < rows; i++) {
+    std::cout << "," << std::setprecision(1) << predictions_column_wise[i];
+  }
+  std::cout << std::endl;
+  // Predict with the decision tree loaded from file
+  double *predictions_copy = (double *)malloc(sizeof(double) * rows);
+  dt_copy.predict(X_test, rows, cols, predictions_copy, true, false);
+  std::cout << "Predictions of dataset loaded from file:" << std::endl;
+  std::cout << std::setprecision(1) << predictions_copy[0];
+  for (index_t i = 1; i < rows; i++) {
+    std::cout << "," << std::setprecision(1) << predictions_copy[i];
+  }
+  std::cout << std::endl;
+
+  bool areEqual = true;
+  for (index_t i = 0; i < rows && areEqual; i++) {
+    if (predictions_copy[i] != predictions[i]) {
+      std::cout << "index " << i << " is " << predictions[i] << " and "
+                << predictions_copy[i] << " on the copy side" << std::endl;
+      areEqual = false;
+    }
+  }
+  std::cout << "Are predictions equal? " << areEqual << std::endl;
+
   // Free memory
   free((void *)X);
   free((void *)y);
-
-
+  free((void *)X_test);
+  free((void *)predictions);
+  free((void *)predictions_column_wise);
+  free((void *)predictions_copy);
 
   return 0;
 }
