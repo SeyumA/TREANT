@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
   }
 
   const auto [attackerFile, datasetFile, maxDepth, budget,
-              threads] = [](const int argc, char *const *argv)
+  threads] = [](const int argc, char *const *argv)
       -> std::tuple<std::string, std::string, std::size_t, cost_t, int> {
     std::string attackerFile, datasetFile;
     std::size_t maxDepth = 1; // default maxDepth value is 1
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
   feature_t *X = (feature_t *)malloc(sizeof(feature_t) * rows * cols);
   label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
   const auto [isNumerical, notNumericalEntries] =
-      Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
+  Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
   std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size()
             << std::endl;
 
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
       std::cout << "Time elapsed to fit the decision tree: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                          start)
-                       .count()
+                    .count()
                 << " milliseconds." << std::endl;
     }
     {
@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
       std::cout << "Time elapsed to fit the decision tree: "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                          start)
-                       .count()
+                    .count()
                 << " milliseconds." << std::endl;
     }
   }
