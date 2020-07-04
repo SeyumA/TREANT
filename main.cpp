@@ -6,6 +6,7 @@
 #include <queue>
 #include <unistd.h>
 
+#include "BaggingClassifier.h"
 #include "Dataset.h"
 #include "DecisionTree.h"
 #include "Node.h"
@@ -14,9 +15,8 @@
 
 #include <cassert>
 #include <fstream>
-#include <future>
 #include <iomanip>
-
+#include <thread>
 
 int main(int argc, char **argv) {
 
@@ -106,6 +106,14 @@ int main(int argc, char **argv) {
   Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
                   utils::join(notNumericalEntries, ','),
                   utils::join(columnNames, ','));
+
+  if (budget < 0) {
+    throw std::runtime_error(
+        "ERROR DecisionTree::fit: Invalid "
+        "input data (budget must be positive or equal to zero)");
+  }
+  Attacker attacker(dataset, attackerFile, budget);
+
   //  std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is:" << dataset.size() << std::endl;
   std::cout << "threads = " << threads << std::endl;
@@ -115,19 +123,28 @@ int main(int argc, char **argv) {
   // minimum instances per node (under this threshold the node became a leaf)
   const unsigned minPerNode = 20;
   const bool isAffine = false;
+
+  BaggingClassifier baggingClassifier;
+  std::cout << "Fitting the BaggingClassifier\n";
+  baggingClassifier.setMaxFeatures(1.0);
+  baggingClassifier.fit(dataset, attacker, useICML2019, maxDepth, minPerNode,
+                        isAffine);
+  std::cout << "End of fitting the BaggingClassifier\n";
+
   //  const bool useICML2019 = true;
 
+  //  indexes_t rowsIndexes;
   {
     const auto trainTrees =
         [](std::vector<DecisionTree> &trees, const indexes_t &toBeTrained,
-           const Dataset &dataset, const std::string &attackerFile,
-           const cost_t &budget, const unsigned &threads,
-           const bool &useICML2019, const unsigned &maxDepth,
-           const unsigned minPerNode, const bool isAffine,
+           const Dataset &dataset, const Attacker &attacker,
+           const unsigned &threads, const bool &useICML2019,
+           const unsigned &maxDepth, const unsigned minPerNode,
+           const bool isAffine, const indexes_t &rowsIndexes,
            const Impurity impurityType) {
           for (const auto &i : toBeTrained) {
-            trees[i].fit(dataset, attackerFile, budget, threads, useICML2019,
-                         maxDepth, minPerNode, isAffine, impurityType);
+            trees[i].fit(dataset, attacker, threads, useICML2019, maxDepth,
+                         minPerNode, isAffine, rowsIndexes, impurityType);
           }
           return;
         };
@@ -141,10 +158,10 @@ int main(int argc, char **argv) {
     {
       const auto start = std::chrono::steady_clock::now();
       std::vector<DecisionTree> trained_trees(num_trained_trees);
+
       for (unsigned int i = 0; i < num_trained_trees; i++) {
-        trained_trees[i].fit(dataset, attackerFile, budget, threads,
-                             useICML2019, maxDepth, minPerNode, isAffine,
-                             Impurity::SSE);
+        trained_trees[i].fit(dataset, attacker, threads, useICML2019, maxDepth,
+                             minPerNode, isAffine, indexes_t(), Impurity::SSE);
       }
       const auto end = std::chrono::steady_clock::now();
 
@@ -175,8 +192,8 @@ int main(int argc, char **argv) {
 
       for (unsigned int j = 0; j < jobs; j++) {
         tasks.push_back(std::thread(trainTrees, std::ref(trees), treesPerJob[j],
-                                    dataset, attackerFile, budget, threads,
-                                    useICML2019, maxDepth, minPerNode, isAffine,
+                                    dataset, attacker, threads, useICML2019,
+                                    maxDepth, minPerNode, isAffine, indexes_t(),
                                     Impurity::SSE));
       }
       std::cout << "Joining tasks\n";

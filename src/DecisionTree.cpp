@@ -4,10 +4,10 @@
 
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <numeric>
 #include <regex>
 #include <stack>
-#include <iostream>
 
 #include "Attacker.h"
 #include "Constraint.h"
@@ -55,8 +55,8 @@ void DecisionTree::load(const std::string &filePath) {
 
   if (nodePointers.empty()) {
     std::cout << "No valid node present in the file\n";
-//    delete root_;
-//    root_ = nullptr;
+    //    delete root_;
+    //    root_ = nullptr;
   }
 
   Node *root = nodePointers[nodePointers.size() - 1];
@@ -73,7 +73,7 @@ void DecisionTree::load(const std::string &filePath) {
   delete root_;
   // Update the root_
   root_ = root;
-//  root_.reset(nullptr);
+  //  root_.reset(nullptr);
 }
 
 void DecisionTree::save(const std::string &filePath) const {
@@ -167,11 +167,10 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
   return os << treeAsString(dt.root_, s, 0);
 }
 
-void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
-                       const cost_t &budget, const unsigned &threads,
-                       const bool &useICML2019, const unsigned &maxDepth,
-                       const unsigned minPerNode, const bool isAffine,
-                       const Impurity impurityType) {
+void DecisionTree::fit(const Dataset &dataset, const Attacker &attacker,
+                       const unsigned &threads, const bool &useICML2019,
+                       const unsigned &maxDepth, const unsigned minPerNode,
+                       const bool isAffine, const indexes_t &rows, const Impurity impurityType) {
 
   // Check if the tree is already trained
   if (isTrained()) {
@@ -190,32 +189,36 @@ void DecisionTree::fit(const Dataset &dataset, const std::string &attackerFile,
                              "input data (empty dataset)");
   }
 
-  if (budget < 0) {
-    throw std::runtime_error(
-        "ERROR DecisionTree::fit: Invalid "
-        "input data (budget must be positive or equal to zero)");
-  }
-
-  // At the beginning all the features and all the rows are active
-  std::vector<std::size_t> rows(dataset.rows_);
-  std::iota(rows.begin(), rows.end(), 0);
+  // All valid columns
   std::vector<std::size_t> validFeatures(dataset.cols_);
   std::iota(validFeatures.begin(), validFeatures.end(), 0);
-  // At the beginning all the costs are equal to 0.0 (one for each row)
-  std::unordered_map<index_t, cost_t> costs;
-  for (index_t i = 0; i < rows.size(); i++) {
-    costs[i] = 0.0;
-  }
 
   // Empty constraints at the beginning
   std::vector<Constraint> constraints;
   // Calculate current prediction as the default
   prediction_t currentPrediction = dataset.getDefaultPrediction();
 
-  Attacker attacker(dataset, attackerFile, budget);
-  root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
-                         currentPrediction, maxDepth, minPerNode, isAffine,
-                         impurityType, constraints, threads, useICML2019);
+  if (!rows.empty()) {
+    // At the beginning all the costs are equal to 0.0 (one for each row)
+    std::unordered_map<index_t, cost_t> costs;
+    for (const auto& r : rows) {
+      costs[r] = 0.0;
+    }
+    root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,
+                           currentPrediction, maxDepth, minPerNode, isAffine,
+                           impurityType, constraints, threads, useICML2019);
+  } else {
+    // At the beginning all the features and all the rows are active
+    indexes_t allRows(dataset.rows_);
+    std::iota(allRows.begin(), allRows.end(), 0);
+    std::unordered_map<index_t, cost_t> costs;
+    for (index_t i = 0; i < allRows.size(); i++) {
+      costs[i] = 0.0;
+    }
+    root_ = fitRecursively(dataset, allRows, validFeatures, 0, attacker, costs,
+                           currentPrediction, maxDepth, minPerNode, isAffine,
+                           impurityType, constraints, threads, useICML2019);
+  }
 }
 
 Node *DecisionTree::fitRecursively(
@@ -315,7 +318,8 @@ Node *DecisionTree::fitRecursively(
         currHeight + 1, attacker, costsRight, bestPredRight, maxDepth,
         minPerNode, isAffine, impurityType, constraintsRight, numThreads,
         useICML2019);
-    // Make sure that we get a leaf or an internal node (leave left and right as nullptr)
+    // Make sure that we get a leaf or an internal node (leave left and right as
+    // nullptr)
     if (leftNode && rightNode) {
       ret->setLeft(leftNode);
       ret->setRight(rightNode);

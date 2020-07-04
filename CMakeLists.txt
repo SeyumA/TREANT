@@ -38,6 +38,7 @@ set(SOURCES
         include/SplitOptimizer.h
         include/Attacker.h
         include/Constraint.h
+        include/BaggingClassifier.h
 
         # Sources
         src/utils.cpp
@@ -48,7 +49,8 @@ set(SOURCES
         src/Node.cpp
         src/SplitOptimizer.cpp
         src/Attacker.cpp
-        src/Constraint.cpp)
+        src/Constraint.cpp
+        src/BaggingClassifier.cpp)
 
 
 SET(TREANT_LIB treantLib)

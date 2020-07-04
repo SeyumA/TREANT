@@ -21,16 +21,16 @@ class DecisionTree final {
 public:
   // Constructors
   explicit DecisionTree();
-  DecisionTree(const DecisionTree& o) = delete;
-  DecisionTree(DecisionTree&& o) = delete;
+  DecisionTree(const DecisionTree &o) = delete;
+  DecisionTree(DecisionTree &&o) = delete;
 
   // Destructor
   ~DecisionTree();
 
   // Load the internal node structure from a file
-  void load(const std::string& filePath);
+  void load(const std::string &filePath);
   // Save the internal node structure to a file
-  void save(const std::string& filePath) const;
+  void save(const std::string &filePath) const;
 
   // Functions
   // Assumption: X is store in row-wise order (C-order)
@@ -40,12 +40,10 @@ public:
   [[nodiscard]] std::size_t getHeight() const;
   [[nodiscard]] std::size_t getNumberNodes() const;
 
-  void fit(const Dataset &dataset, const std::string &attackerFile,
-           const cost_t &budget, const unsigned &threads,
-           const bool &useICML2019,
-           const unsigned &maxDepth,
-           const unsigned minPerNode,
-           const bool isAffine,
+  void fit(const Dataset &dataset, const Attacker &attacker,
+           const unsigned &threads, const bool &useICML2019,
+           const unsigned &maxDepth, const unsigned minPerNode,
+           const bool isAffine, const indexes_t &rows,
            const Impurity impurityType = Impurity::SSE);
 
   [[nodiscard]] bool isTrained() const;
@@ -60,10 +58,8 @@ private:
                        const Attacker &attacker,
                        const std::unordered_map<index_t, cost_t> &costs,
                        const prediction_t &currentPrediction,
-                       const unsigned &maxDepth,
-                       const unsigned minPerNode,
-                       const bool isAffine,
-                       Impurity impurityType,
+                       const unsigned &maxDepth, const unsigned minPerNode,
+                       const bool isAffine, Impurity impurityType,
                        const std::vector<Constraint> &constraints,
                        const unsigned &threads, const bool &useICML2019) const;
 };
