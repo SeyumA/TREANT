@@ -5,6 +5,7 @@
 #include "BaggingClassifier.h"
 #include "Attacker.h"
 #include "Dataset.h"
+#include "utils.h"
 
 #include <cassert>
 #include <iostream>
@@ -31,6 +32,22 @@ void BaggingClassifier::fit(const Dataset &dataset, const Attacker &attacker,
                             const bool &useICML2019, const unsigned &maxDepth,
                             const unsigned &minPerNode, const bool &isAffine) {
 
+  // Determine possible classes and assign to classes_ in analogy with python
+  // BaggingClassifier
+  std::set<label_t> classesSet;
+  for (std::size_t i = 0; i < dataset.rows_; i++) {
+    classesSet.insert(dataset(i));
+  }
+
+  if (classesSet.size() != 2) {
+    throw std::runtime_error(utils::format(
+        "This BaggingClassifier is designed only for binary classification, "
+        "detected {} types of labels",
+        classesSet.size()));
+  }
+  // Update classes
+  classes_ = std::vector<label_t>(classesSet.begin(), classesSet.end());
+
   std::vector<DecisionTree>(estimators_).swap(trees_);
   const unsigned usedJobs = estimateOptimalJobs();
 
@@ -43,26 +60,72 @@ void BaggingClassifier::fit(const Dataset &dataset, const Attacker &attacker,
 
   std::vector<std::thread> tasks;
   for (unsigned int j = 0; j < usedJobs; j++) {
-    tasks.push_back(std::thread(trainTrees, std::ref(trees_), treesPerJob[j],
-                                randomIndexesPerTree, dataset, attacker,
-                                useICML2019, maxDepth, minPerNode, isAffine));
+    tasks.emplace_back(std::thread(
+        trainTrees, std::ref(trees_), treesPerJob[j], randomIndexesPerTree,
+        dataset, attacker, useICML2019, maxDepth, minPerNode, isAffine));
   }
   for (auto &t : tasks) {
     t.join();
   }
 }
 
-void BaggingClassifier::setEstimators(const unsigned estimators) {
+void BaggingClassifier::predict(const double *X, const unsigned &rows,
+                                const unsigned &cols, double *res,
+                                const bool &isRowsWise) const {
+  assert(!classes_.empty());
+  assert(!trees_.empty());
+  // score is false because real prediction are needed: 0.0 or 1.0
+  const bool score = false;
+
+  double *allPredictions = (double *)malloc(sizeof(double) * rows * trees_.size());
+  unsigned offset = 0;
+  for (const auto &tree : trees_) {
+    tree.predict(X, rows, cols, allPredictions + offset, isRowsWise, score);
+    offset += rows;
+  }
+
+  std::unordered_map<label_t, unsigned> votes;
+  for (const auto &c : classes_) {
+    votes[c] = 0;
+  }
+
+  for (std::size_t i = 0; i < rows; i++) {
+    // Update the votes map with the results of the current record
+    for (std::size_t t = 0; t < trees_.size(); t++) {
+      const double currPrediction = allPredictions[t * rows + i];
+      assert(votes.find(currPrediction) != votes.end());
+      votes[currPrediction] += 1;
+    }
+    // Calculate the most voted
+    label_t mostVotedClass = votes.begin()->first;
+    unsigned mostVotedVotes = votes.begin()->second;
+    for (const auto &[c, v] : votes) {
+      if (v > mostVotedVotes) {
+        mostVotedClass = c;
+        mostVotedVotes = v;
+      }
+    }
+    // Update the result vector
+    res[i] = mostVotedClass;
+    // Reset the map
+    for (const auto &c : classes_) {
+      votes[c] = 0;
+    }
+  }
+  free((void *)allPredictions);
+}
+
+void BaggingClassifier::setEstimators(const unsigned &estimators) {
   assert(estimators > 0);
   estimators_ = estimators;
 }
 
-void BaggingClassifier::setJobs(const unsigned jobs) {
+void BaggingClassifier::setJobs(const unsigned &jobs) {
   assert(jobs > 0);
   jobs_ = jobs;
 }
 
-void BaggingClassifier::setMaxFeatures(const double maxFeatures) {
+void BaggingClassifier::setMaxFeatures(const double &maxFeatures) {
   assert(maxFeatures > 0.0);
   assert(maxFeatures <= 1.0);
   maxFeatures_ = maxFeatures;

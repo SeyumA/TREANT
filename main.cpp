@@ -115,10 +115,9 @@ int main(int argc, char **argv) {
   Attacker attacker(dataset, attackerFile, budget);
 
   //  std::cout << dataset << std::endl << std::endl;
-  std::cout << "The dataset size is:" << dataset.size() << std::endl;
+  std::cout << "The dataset size is: " << dataset.size() << std::endl;
   std::cout << "threads = " << threads << std::endl;
   //
-
   const bool useICML2019 = false;
   // minimum instances per node (under this threshold the node became a leaf)
   const unsigned minPerNode = 20;
@@ -127,94 +126,31 @@ int main(int argc, char **argv) {
   BaggingClassifier baggingClassifier;
   std::cout << "Fitting the BaggingClassifier\n";
   baggingClassifier.setMaxFeatures(1.0);
+  baggingClassifier.setEstimators(2);
+  baggingClassifier.setJobs(2);
   baggingClassifier.fit(dataset, attacker, useICML2019, maxDepth, minPerNode,
                         isAffine);
   std::cout << "End of fitting the BaggingClassifier\n";
 
-  //  const bool useICML2019 = true;
-
-  //  indexes_t rowsIndexes;
-  {
-    const auto trainTrees =
-        [](std::vector<DecisionTree> &trees, const indexes_t &toBeTrained,
-           const Dataset &dataset, const Attacker &attacker,
-           const unsigned &threads, const bool &useICML2019,
-           const unsigned &maxDepth, const unsigned minPerNode,
-           const bool isAffine, const indexes_t &rowsIndexes,
-           const Impurity impurityType) {
-          for (const auto &i : toBeTrained) {
-            trees[i].fit(dataset, attacker, threads, useICML2019, maxDepth,
-                         minPerNode, isAffine, rowsIndexes, impurityType);
-          }
-          return;
-        };
-
-    unsigned jobs = 4; // jobs used for bagging
-    //    threads = 1;  // threads used to build the single decision tree
-    unsigned num_trained_trees = 4;
-    assert(threads == 1);
-    assert(num_trained_trees % jobs == 0);
-
-    {
-      const auto start = std::chrono::steady_clock::now();
-      std::vector<DecisionTree> trained_trees(num_trained_trees);
-
-      for (unsigned int i = 0; i < num_trained_trees; i++) {
-        trained_trees[i].fit(dataset, attacker, threads, useICML2019, maxDepth,
-                             minPerNode, isAffine, indexes_t(), Impurity::SSE);
-      }
-      const auto end = std::chrono::steady_clock::now();
-
-      std::cout << "The first decision tree is:" << std::endl
-                << trained_trees[0] << std::endl;
-
-      std::cout << "Time elapsed to fit the decision tree: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                         start)
-                       .count()
-                << " milliseconds." << std::endl;
-    }
-    {
-      const auto start = std::chrono::steady_clock::now();
-      assert(num_trained_trees >= jobs);
-      std::vector<std::thread> tasks;
-      // All the decision trees of the forest
-      std::vector<DecisionTree> trees(num_trained_trees);
-      // Assign tree indexes to jobs
-      std::vector<indexes_t> treesPerJob(jobs);
-      for (unsigned int jobId = 0; jobId < jobs; jobId++) {
-        for (unsigned int j = 0; j < num_trained_trees; j++) {
-          if (j % jobs == jobId) {
-            treesPerJob[jobId].push_back(j);
-          }
-        }
-      }
-
-      for (unsigned int j = 0; j < jobs; j++) {
-        tasks.push_back(std::thread(trainTrees, std::ref(trees), treesPerJob[j],
-                                    dataset, attacker, threads, useICML2019,
-                                    maxDepth, minPerNode, isAffine, indexes_t(),
-                                    Impurity::SSE));
-      }
-      std::cout << "Joining tasks\n";
-      for (auto &t : tasks) {
-        t.join();
-      }
-      std::cout << "All tasks are joint\n";
-
-      const auto end = std::chrono::steady_clock::now();
-
-      std::cout << "Time elapsed to fit the decision tree: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                         start)
-                       .count()
-                << " milliseconds." << std::endl;
+  // Tets of predictions using baggingClassifier -------------------------------
+  const unsigned testSetRows = 2;
+  // Building the test set
+  double *X_test = (double *)malloc(sizeof(double) * testSetRows * cols);
+  for (unsigned i = 0; i < testSetRows; i++){
+    for (unsigned j = 0; j < cols; j++){
+      X_test[i * cols + j] = dataset(i, j);
     }
   }
+  const bool isTestRowsWise = true;
+  //
+  double *predictionsOnTest = (double *)malloc(sizeof(double) * testSetRows);
+  baggingClassifier.predict(X_test, testSetRows, cols, predictionsOnTest, isTestRowsWise);
 
   // Free memory
   free((void *)X);
   free((void *)y);
+  free((void *)X_test);
+  free((void *)predictionsOnTest);
 
   return 0;
 }

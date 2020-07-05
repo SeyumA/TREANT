@@ -21,23 +21,25 @@ public:
            const bool &useICML2019, const unsigned &maxDepth,
            const unsigned &minPerNode, const bool &isAffine);
 
-  void predict(const double *X, const unsigned rows, const unsigned cols,
-               double *res, const bool isRowsWise) const;
+  void predict(const double *X, const unsigned &rows, const unsigned &cols,
+               double *res, const bool &isRowsWise) const;
 
-  void setEstimators(const unsigned estimators);
-  void setJobs(const unsigned estimators);
-  void setMaxFeatures(const double maxFeatures);
+  void setEstimators(const unsigned &estimators);
+  void setJobs(const unsigned &jobs);
+  void setMaxFeatures(const double &maxFeatures);
 
 private:
   unsigned estimators_ = 1;
   unsigned jobs_ = 1;
   double maxFeatures_ = 0.5;
   std::vector<DecisionTree> trees_;
+  std::vector<label_t> classes_;
 
-  unsigned estimateOptimalJobs() const;
-  std::vector<indexes_t> distributeTreeIdsOnJobs(unsigned jobs) const;
+  [[nodiscard]] unsigned estimateOptimalJobs() const;
+  [[nodiscard]] std::vector<indexes_t>
+  distributeTreeIdsOnJobs(unsigned jobs) const;
 
-  std::vector<indexes_t>
+  [[nodiscard]] std::vector<indexes_t>
   generateRandomIndexesPerTree(const unsigned &totalRows) const;
 };
 
