@@ -46,7 +46,7 @@ void BaggingClassifier::fit(const Dataset &dataset, const Attacker &attacker,
         classesSet.size()));
   }
   // Update classes
-  classes_ = std::vector<label_t>(classesSet.begin(), classesSet.end());
+  classesSet.swap(classes_);
 
   std::vector<DecisionTree>(estimators_).swap(trees_);
   const unsigned usedJobs = estimateOptimalJobs();

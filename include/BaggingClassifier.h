@@ -8,6 +8,7 @@
 #include "DecisionTree.h"
 #include "types.h"
 #include <vector>
+#include <set>
 
 class Dataset;
 class Attacker;
@@ -33,7 +34,7 @@ private:
   unsigned jobs_ = 1;
   double maxFeatures_ = 0.5;
   std::vector<DecisionTree> trees_;
-  std::vector<label_t> classes_;
+  std::set<label_t> classes_;
 
   [[nodiscard]] unsigned estimateOptimalJobs() const;
   [[nodiscard]] std::vector<indexes_t>
