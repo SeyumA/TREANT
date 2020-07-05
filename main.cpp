@@ -153,13 +153,13 @@ int main(int argc, char **argv) {
   // Print
   std::cout << "Predictions on bagging\n";
   for (unsigned i = 0; i < testSetRows; i++) {
-    std::cout << predictionsOnTest[i] << ' ';
+    std::cout << predictionsOnTest[i] << (i == (testSetRows - 1) ? '\n' : ',');
   }
   // Reset
   for (unsigned i = 0; i < testSetRows; i++) {
     predictionsOnTest[i] = 0;
   }
-  // logging a copy
+  // Building a copy of the bagging classifier
   BaggingClassifier baggingClassifier_copy;
   baggingClassifier_copy.load(filePath);
   baggingClassifier_copy.predict(X_test, testSetRows, cols, predictionsOnTest,
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
   // Print
   std::cout << "Predictions on bagging copy\n";
   for (unsigned i = 0; i < testSetRows; i++) {
-    std::cout << predictionsOnTest[i] << ' ';
+    std::cout << predictionsOnTest[i] << (i == (testSetRows - 1) ? '\n' : ',');
   }
 
   // Free memory

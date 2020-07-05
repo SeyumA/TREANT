@@ -9,10 +9,12 @@
 
 #include <cassert>
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <random>
 #include <thread>
+
+static const std::string classesKey = "classes";
 
 void trainTrees(std::vector<DecisionTree> &trees,
                 const indexes_t &treesToBeTrained,
@@ -149,9 +151,8 @@ void BaggingClassifier::load(const std::string &filePath) {
   std::set<label_t> classes;
   std::string firstLine;
   if (std::getline(ifs, firstLine)) {
-    const auto keySize = BaggingClassifier::classesKey.size();
-    assert(!firstLine.empty() &&
-           firstLine.substr(0, keySize) == BaggingClassifier::classesKey);
+    const auto keySize = classesKey.size();
+    assert(!firstLine.empty() && firstLine.substr(0, keySize) == classesKey);
     const auto twoClassesString = firstLine.substr(keySize);
     const auto commaPos = twoClassesString.find(',');
     assert(commaPos != std::string::npos);
@@ -163,7 +164,7 @@ void BaggingClassifier::load(const std::string &filePath) {
     assert(classes.insert(secondClass).second);
   }
   // Get the number of trees
-  const unsigned numTrees = [](std::istream &ifs){
+  const unsigned numTrees = [](std::istream &ifs) {
     std::string secondLine;
     if (std::getline(ifs, secondLine)) {
       assert(!secondLine.empty());
@@ -198,7 +199,7 @@ void BaggingClassifier::save(const std::string &filePath) const {
   // Write the 2 classes
   {
     auto it = classes_.begin();
-    ofs << BaggingClassifier::classesKey << ':';
+    ofs << classesKey << ':';
     ofs << std::setprecision(std::numeric_limits<double>::max_digits10) << *it
         << ',' << std::setprecision(std::numeric_limits<double>::max_digits10)
         << *(++it) << std::endl;
