@@ -41,6 +41,7 @@ private:
   unsigned jobs_ = 1;
   double maxFeatures_ = 0.5;
   bool withReplacement_ = false;
+  const std::string classesKey = "classes";
   std::vector<DecisionTree> trees_;
   std::set<label_t> classes_;
 

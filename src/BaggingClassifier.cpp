@@ -8,10 +8,11 @@
 #include "utils.h"
 
 #include <cassert>
+#include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <random>
 #include <thread>
-#include <fstream>
 
 void trainTrees(std::vector<DecisionTree> &trees,
                 const indexes_t &treesToBeTrained,
@@ -144,15 +145,36 @@ void BaggingClassifier::load(const std::string &filePath) {
     throw std::runtime_error(
         "The decision tree file stream is not open or not good");
   }
+  // Read classes
+  std::set<label_t> classes;
   std::string firstLine;
   if (std::getline(ifs, firstLine)) {
-    assert(!firstLine.empty());
+    const auto keySize = BaggingClassifier::classesKey.size();
+    assert(!firstLine.empty() &&
+           firstLine.substr(0, keySize) == BaggingClassifier::classesKey);
+    const auto twoClassesString = firstLine.substr(keySize);
+    const auto commaPos = twoClassesString.find(',');
+    assert(commaPos != std::string::npos);
+    const auto firstClass =
+        strtod(twoClassesString.substr(0, commaPos).c_str(), NULL);
+    const auto secondClass =
+        strtod(twoClassesString.substr(commaPos + 1).c_str(), NULL);
+    assert(classes.insert(firstClass).second);
+    assert(classes.insert(secondClass).second);
   }
+  // Get the number of trees
+  const unsigned numTrees = [](std::istream &ifs){
+    std::string secondLine;
+    if (std::getline(ifs, secondLine)) {
+      assert(!secondLine.empty());
+    }
+    return std::stoul(secondLine);
+  }(ifs);
 
   // Assuming that the first line is not empty
-  std::vector<DecisionTree> trees(std::stoi(firstLine));
+  std::vector<DecisionTree> trees(numTrees);
   unsigned counter = 0;
-  for (std::size_t  i = 0; i < trees.size(); i++) {
+  for (std::size_t i = 0; i < trees.size(); i++) {
     trees[i].loadFromStream(ifs);
     assert(trees[counter].isTrained());
   }
@@ -160,10 +182,12 @@ void BaggingClassifier::load(const std::string &filePath) {
   ifs.close();
   // Update the internal struct
   trees.swap(trees_);
-  estimators_ = trees_.size();
+  classes.swap(classes_);
+  estimators_ = numTrees;
 }
 
 void BaggingClassifier::save(const std::string &filePath) const {
+  assert(classes_.size() == 2);
   std::ofstream ofs;
   // If not append the file is rewritten
   ofs.open(filePath, std::ios::trunc);
@@ -171,11 +195,21 @@ void BaggingClassifier::save(const std::string &filePath) const {
     throw std::runtime_error(
         "The decision tree file stream is not open or not good");
   }
+  // Write the 2 classes
+  {
+    auto it = classes_.begin();
+    ofs << BaggingClassifier::classesKey << ':';
+    ofs << std::setprecision(std::numeric_limits<double>::max_digits10) << *it
+        << ',' << std::setprecision(std::numeric_limits<double>::max_digits10)
+        << *(++it) << std::endl;
+  }
+  // Write the trees
   ofs << trees_.size() << std::endl;
-  for (const auto& tree : trees_) {
+  for (const auto &tree : trees_) {
     tree.saveToStream(ofs);
     ofs << std::endl;
   }
+  // Close the stream
   ofs.close();
 }
 
