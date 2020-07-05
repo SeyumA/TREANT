@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   label_t *y = (label_t *)malloc(sizeof(label_t) * rows);
   const auto [isNumerical, notNumericalEntries] =
       Dataset::fillXandYfromFile(X, rows, cols, y, datasetFile);
-  std::cout << "The notNumericalEntries size is:" << notNumericalEntries.size()
+  std::cout << "The notNumericalEntries size is :" << notNumericalEntries.size()
             << std::endl;
 
   Dataset dataset(X, rows, cols, y, utils::join(isNumerical, ','),
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 
   //  std::cout << dataset << std::endl << std::endl;
   std::cout << "The dataset size is: " << dataset.size() << std::endl;
-  std::cout << "threads = " << threads << std::endl;
+  std::cout << "internal threads on columns = " << threads << std::endl;
   //
   const bool useICML2019 = false;
   // minimum instances per node (under this threshold the node became a leaf)
@@ -128,23 +128,47 @@ int main(int argc, char **argv) {
   baggingClassifier.setMaxFeatures(1.0);
   baggingClassifier.setEstimators(2);
   baggingClassifier.setJobs(2);
+  baggingClassifier.setWithReplacement(false);
   baggingClassifier.fit(dataset, attacker, useICML2019, maxDepth, minPerNode,
                         isAffine);
   std::cout << "End of fitting the BaggingClassifier\n";
 
-  // Tets of predictions using baggingClassifier -------------------------------
-  const unsigned testSetRows = 2;
-  // Building the test set
+  const std::string filePath("example.txt");
+  baggingClassifier.save(filePath);
+
+  // Test on predictions using baggingClassifier -------------------------------
+  const unsigned testSetRows = 10;
+  // Building the test set with records from the training set X
   double *X_test = (double *)malloc(sizeof(double) * testSetRows * cols);
-  for (unsigned i = 0; i < testSetRows; i++){
-    for (unsigned j = 0; j < cols; j++){
+  for (unsigned i = 0; i < testSetRows; i++) {
+    for (unsigned j = 0; j < cols; j++) {
       X_test[i * cols + j] = dataset(i, j);
     }
   }
   const bool isTestRowsWise = true;
   //
   double *predictionsOnTest = (double *)malloc(sizeof(double) * testSetRows);
-  baggingClassifier.predict(X_test, testSetRows, cols, predictionsOnTest, isTestRowsWise);
+  baggingClassifier.predict(X_test, testSetRows, cols, predictionsOnTest,
+                            isTestRowsWise);
+  // Print
+  std::cout << "Predictions on bagging\n";
+  for (unsigned i = 0; i < testSetRows; i++) {
+    std::cout << predictionsOnTest[i] << ' ';
+  }
+  // Reset
+  for (unsigned i = 0; i < testSetRows; i++) {
+    predictionsOnTest[i] = 0;
+  }
+  // logging a copy
+  BaggingClassifier baggingClassifier_copy;
+  baggingClassifier_copy.load(filePath);
+  baggingClassifier_copy.predict(X_test, testSetRows, cols, predictionsOnTest,
+                                 isTestRowsWise);
+  // Print
+  std::cout << "Predictions on bagging copy\n";
+  for (unsigned i = 0; i < testSetRows; i++) {
+    std::cout << predictionsOnTest[i] << ' ';
+  }
 
   // Free memory
   free((void *)X);

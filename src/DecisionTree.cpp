@@ -21,21 +21,26 @@ DecisionTree::DecisionTree() : root_(nullptr) {}
 
 void DecisionTree::load(const std::string &filePath) {
 
-  static std::regex childrenRegex(R"__(^\[(\d{1,}),(\d{1,})\](.*))__");
-
   std::ifstream ifs;
   ifs.open(filePath);
   if (!ifs.is_open() || !ifs.good()) {
     throw std::runtime_error(
         "The decision tree file stream is not open or not good");
   }
-  // Reading the first line and populate the list of column names
+  // Assuming that the first line is not empty
+  loadFromStream(ifs);
+  // Close the stream
+  ifs.close();
+}
+
+void DecisionTree::loadFromStream(std::istream &is) {
+
+  static std::regex childrenRegex(R"__(^\[(\d{1,}),(\d{1,})\](.*))__");
+
   std::string line;
   std::vector<Node *> nodePointers;
   // Get the nodes
-  while (std::getline(ifs, line)) {
-
-    //    std::cout << "line: '" << line << "'\n";
+  while (std::getline(is, line) && !line.empty()) {
     std::cmatch cm; // same as std::match_results<const char*> cm;
     // using explicit flags:
     std::regex_match(line.c_str(), cm, childrenRegex);
@@ -54,9 +59,8 @@ void DecisionTree::load(const std::string &filePath) {
   }
 
   if (nodePointers.empty()) {
-    std::cout << "No valid node present in the file\n";
-    //    delete root_;
-    //    root_ = nullptr;
+    throw std::runtime_error(
+        "No nodes read from stream");
   }
 
   Node *root = nodePointers[nodePointers.size() - 1];
@@ -65,26 +69,32 @@ void DecisionTree::load(const std::string &filePath) {
     for (auto &nPtr : nodePointers) {
       delete nPtr;
     }
-    throw std::runtime_error("Some node is isolated (error in load " +
-                             filePath + " file");
+    throw std::runtime_error(
+        "Some node is isolated (error in loading from input stream)");
   }
 
   // delete the root and its children if needed (already trained)
   delete root_;
   // Update the root_
   root_ = root;
-  //  root_.reset(nullptr);
 }
 
 void DecisionTree::save(const std::string &filePath) const {
   std::ofstream ofs;
+  // If not append the file is rewritten
   ofs.open(filePath, std::ios::trunc);
   if (!ofs.is_open() || !ofs.good()) {
     throw std::runtime_error(
         "The decision tree file stream is not open or not good");
   }
-  root_->getSubtreeStruct(ofs);
+  saveToStream(ofs);
+  // write a blank line in the end
+  ofs << std::endl;
   ofs.close();
+}
+
+void DecisionTree::saveToStream(std::ostream& os) const {
+  root_->getSubtreeStruct(os);
 }
 
 std::size_t DecisionTree::getHeight() const {
@@ -170,7 +180,8 @@ std::ostream &operator<<(std::ostream &os, const DecisionTree &dt) {
 void DecisionTree::fit(const Dataset &dataset, const Attacker &attacker,
                        const unsigned &threads, const bool &useICML2019,
                        const unsigned &maxDepth, const unsigned minPerNode,
-                       const bool isAffine, const indexes_t &rows, const Impurity impurityType) {
+                       const bool isAffine, const indexes_t &rows,
+                       const Impurity impurityType) {
 
   // Check if the tree is already trained
   if (isTrained()) {
@@ -199,9 +210,11 @@ void DecisionTree::fit(const Dataset &dataset, const Attacker &attacker,
   prediction_t currentPrediction = dataset.getDefaultPrediction();
 
   if (!rows.empty()) {
-    // At the beginning all the costs are equal to 0.0 (one for each row)
+    // At the beginning all the costs are equal to 0.0 (one for each unique row)
     std::unordered_map<index_t, cost_t> costs;
-    for (const auto& r : rows) {
+    // rows is a vector and can contain duplicate indexes, so the costs.size()
+    // can be less than rows.size()
+    for (const auto &r : rows) {
       costs[r] = 0.0;
     }
     root_ = fitRecursively(dataset, rows, validFeatures, 0, attacker, costs,

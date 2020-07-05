@@ -11,6 +11,7 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <fstream>
 
 void trainTrees(std::vector<DecisionTree> &trees,
                 const indexes_t &treesToBeTrained,
@@ -77,7 +78,8 @@ void BaggingClassifier::predict(const double *X, const unsigned &rows,
   // score is false because real prediction are needed: 0.0 or 1.0
   const bool score = false;
 
-  double *allPredictions = (double *)malloc(sizeof(double) * rows * trees_.size());
+  double *allPredictions =
+      (double *)malloc(sizeof(double) * rows * trees_.size());
   unsigned offset = 0;
   for (const auto &tree : trees_) {
     tree.predict(X, rows, cols, allPredictions + offset, isRowsWise, score);
@@ -131,6 +133,54 @@ void BaggingClassifier::setMaxFeatures(const double &maxFeatures) {
   maxFeatures_ = maxFeatures;
 }
 
+void BaggingClassifier::setWithReplacement(const bool &withReplacement) {
+  withReplacement_ = withReplacement;
+}
+
+void BaggingClassifier::load(const std::string &filePath) {
+  std::ifstream ifs;
+  ifs.open(filePath);
+  if (!ifs.is_open() || !ifs.good()) {
+    throw std::runtime_error(
+        "The decision tree file stream is not open or not good");
+  }
+  std::string firstLine;
+  if (std::getline(ifs, firstLine)) {
+    assert(!firstLine.empty());
+  }
+
+  // Assuming that the first line is not empty
+  std::vector<DecisionTree> trees(std::stoi(firstLine));
+  unsigned counter = 0;
+  for (std::size_t  i = 0; i < trees.size(); i++) {
+    trees[i].loadFromStream(ifs);
+    assert(trees[counter].isTrained());
+  }
+  // Close the stream
+  ifs.close();
+  // Update the internal struct
+  trees.swap(trees_);
+  estimators_ = trees_.size();
+}
+
+void BaggingClassifier::save(const std::string &filePath) const {
+  std::ofstream ofs;
+  // If not append the file is rewritten
+  ofs.open(filePath, std::ios::trunc);
+  if (!ofs.is_open() || !ofs.good()) {
+    throw std::runtime_error(
+        "The decision tree file stream is not open or not good");
+  }
+  ofs << trees_.size() << std::endl;
+  for (const auto& tree : trees_) {
+    tree.saveToStream(ofs);
+    ofs << std::endl;
+  }
+  ofs.close();
+}
+
+// Private methods -------------------------------------------------------------
+
 unsigned BaggingClassifier::estimateOptimalJobs() const {
   if (jobs_ > estimators_) {
     std::cout << "WARNING: jobs > estimators; " << estimators_
@@ -163,16 +213,26 @@ std::vector<indexes_t> BaggingClassifier::generateRandomIndexesPerTree(
   std::uniform_int_distribution<unsigned int> distribution(0, totalRows - 1);
 
   for (auto &treeIndexesSet : ret) {
-    std::set<unsigned> indexesSet;
-    unsigned counter = 0;
-    while (counter < indexesSize) {
-      const auto candidate = distribution(generator);
-      const auto success = indexesSet.insert(candidate);
-      if (success.second) {
-        counter++;
+    if (!withReplacement_) {
+      // std::set implicitly means NO REPLACEMENTS -> the same index cannot fall
+      // twice in the same sample.
+      std::set<unsigned> indexesSet;
+      unsigned counter = 0;
+      while (counter < indexesSize) {
+        const auto candidate = distribution(generator);
+        const auto success = indexesSet.insert(candidate);
+        if (success.second) {
+          counter++;
+        }
+      }
+      treeIndexesSet = indexes_t(indexesSet.begin(), indexesSet.end());
+    } else {
+      treeIndexesSet.resize(indexesSize);
+      // the random generator can create duplicate values
+      for (std::size_t i = 0; i < indexesSize; i++) {
+        treeIndexesSet[i] = distribution(generator);
       }
     }
-    treeIndexesSet = indexes_t(indexesSet.begin(), indexesSet.end());
   }
 
   return ret;

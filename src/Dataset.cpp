@@ -10,9 +10,6 @@
 #include <sstream>
 #include <utility>
 
-// For debug
-#include <iostream>
-
 #include "utils.h"
 
 
@@ -31,7 +28,6 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
   }
   // Populate categoricalToDouble_
   {
-    std::cout << "notNumericalEntries: " << notNumericalEntries << std::endl;
     std::istringstream iss(notNumericalEntries);
     std::string token;
     char delimiter = ',';
@@ -54,22 +50,15 @@ Dataset::Dataset(const double *X, const unsigned rows, const unsigned cols,
   }
   // Update is numerical
   {
-    //std::cout << "isNumerical: " << isNumerical << std::endl;
     std::istringstream iss(isNumerical);
     std::string token;
     char delimiter = ',';
     while (std::getline(iss, token, delimiter)) {
-      featureIsNumeric_.push_back(token == "True" ? true : false);
+      featureIsNumeric_.push_back(token == "True");
     }
-    std::cout << "isNumerical stored" << std::endl;
-    for (const auto &isNum : featureIsNumeric_) {
-      std::cout << isNum << ' ';
-    }
-    std::cout << std::endl;
   }
   // Assign feature names
   {
-    //std::cout << "columnNames: " << columnNames << std::endl;
     std::istringstream iss(columnNames);
     std::string token;
     char delimiter = ',';
@@ -176,7 +165,7 @@ Dataset::fillXandYfromFile(double *X, const unsigned rows, const unsigned cols,
         if (j < cols) {
           // Update isNumerical
           if (i == 0) {
-            isNumerical.push_back(isNumericalFlag ? "True" : "False");
+            isNumerical.emplace_back(isNumericalFlag ? "True" : "False");
           }
           // Update X (even if the file is read row by row, the ordering is
           // column wise in X

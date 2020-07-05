@@ -28,11 +28,19 @@ public:
   void setEstimators(const unsigned &estimators);
   void setJobs(const unsigned &jobs);
   void setMaxFeatures(const double &maxFeatures);
+  void setWithReplacement(const bool &withReplacement);
+
+  // Load from file
+  void load(const std::string &filePath);
+  // Save to file
+  void save(const std::string &filePath) const;
+
 
 private:
   unsigned estimators_ = 1;
   unsigned jobs_ = 1;
   double maxFeatures_ = 0.5;
+  bool withReplacement_ = false;
   std::vector<DecisionTree> trees_;
   std::set<label_t> classes_;
 

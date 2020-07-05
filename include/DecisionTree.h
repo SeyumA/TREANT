@@ -29,8 +29,10 @@ public:
 
   // Load the internal node structure from a file
   void load(const std::string &filePath);
+  void loadFromStream(std::istream &is);
   // Save the internal node structure to a file
   void save(const std::string &filePath) const;
+  void saveToStream(std::ostream& os) const;
 
   // Functions
   // Assumption: X is store in row-wise order (C-order)
