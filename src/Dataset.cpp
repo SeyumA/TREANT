@@ -206,14 +206,13 @@ std::string Dataset::getFeatureName(index_t i) const {
   return featureNames_[i];
 }
 
-index_t Dataset::getFeatureIndex(const std::string &featureName) const {
+std::optional<index_t> Dataset::getFeatureIndex(const std::string &featureName) const {
   for (index_t i = 0; i < featureNames_.size(); i++) {
     if (featureNames_[i] == featureName) {
       return i;
     }
   }
-  throw std::runtime_error(utils::format(
-      "Cannot find name '{}' in dataset feature names", featureName));
+  return std::nullopt;
 }
 
 std::optional<feature_t>

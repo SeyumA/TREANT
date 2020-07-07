@@ -121,58 +121,29 @@ int main(int argc, char **argv) {
   const unsigned minPerNode = 20;
   const bool isAffine = false;
 
-  BaggingClassifier baggingClassifier;
-  std::cout << "Fitting the BaggingClassifier\n";
-  baggingClassifier.setMaxFeatures(1.0);
-  baggingClassifier.setEstimators(2);
-  baggingClassifier.setJobs(2);
-  baggingClassifier.setWithReplacement(false);
-  baggingClassifier.fit(dataset, attacker, useICML2019, maxDepth, minPerNode,
-                        isAffine);
-  std::cout << "End of fitting the BaggingClassifier\n";
+  DecisionTree dt;
+  {
+    const auto start = std::chrono::steady_clock::now();
+    dt.fit(dataset, attacker, threads, useICML2019, maxDepth,
+           minPerNode, isAffine, indexes_t(), Impurity::SSE);
+    const auto end = std::chrono::steady_clock::now();
 
-  const std::string filePath("example.txt");
-  baggingClassifier.save(filePath);
+    std::cout << "The decision tree is:" << std::endl << dt << std::endl;
 
-  // Test on predictions using baggingClassifier -------------------------------
-  const unsigned testSetRows = 10;
-  // Building the test set with records from the training set X
-  double *X_test = (double *)malloc(sizeof(double) * testSetRows * cols);
-  for (unsigned i = 0; i < testSetRows; i++) {
-    for (unsigned j = 0; j < cols; j++) {
-      X_test[i * cols + j] = dataset(i, j);
-    }
+    std::cout << "Time elapsed to fit the decision tree: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                  .count()
+              << " milliseconds." << std::endl;
   }
-  const bool isTestRowsWise = true;
-  //
-  double *predictionsOnTest = (double *)malloc(sizeof(double) * testSetRows);
-  baggingClassifier.predict(X_test, testSetRows, cols, predictionsOnTest,
-                            isTestRowsWise);
-  // Print
-  std::cout << "Predictions on bagging\n";
-  for (unsigned i = 0; i < testSetRows; i++) {
-    std::cout << predictionsOnTest[i] << (i == (testSetRows - 1) ? '\n' : ',');
-  }
-  // Reset
-  for (unsigned i = 0; i < testSetRows; i++) {
-    predictionsOnTest[i] = 0;
-  }
-  // Building a copy of the bagging classifier
-  BaggingClassifier baggingClassifier_copy;
-  baggingClassifier_copy.load(filePath);
-  baggingClassifier_copy.predict(X_test, testSetRows, cols, predictionsOnTest,
-                                 isTestRowsWise);
-  // Print
-  std::cout << "Predictions on bagging copy\n";
-  for (unsigned i = 0; i < testSetRows; i++) {
-    std::cout << predictionsOnTest[i] << (i == (testSetRows - 1) ? '\n' : ',');
-  }
+
+  std::cout << "Is the decision tree trained? " << dt.isTrained() << std::endl;
+  std::cout << "Decision tree height: " << dt.getHeight() << std::endl;
+  std::cout << "Decision tree node count: " << dt.getNumberNodes() << std::endl;
 
   // Free memory
   free((void *)X);
   free((void *)y);
-  free((void *)X_test);
-  free((void *)predictionsOnTest);
 
   return 0;
 }

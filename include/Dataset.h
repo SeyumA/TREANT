@@ -48,7 +48,7 @@ public:
 
   [[nodiscard]] std::string getFeatureName(index_t i) const;
 
-  [[nodiscard]] index_t getFeatureIndex(const std::string &featureName) const;
+  [[nodiscard]] std::optional<index_t> getFeatureIndex(const std::string &featureName) const;
 
   [[nodiscard]] std::optional<feature_t>
   getCategoricalFeatureValue(const std::string &featureName) const;

@@ -137,8 +137,15 @@ Attacker::Attacker(const Dataset &dataset, const std::string &json,
     //
     for (const auto &ruleAndTypes : attack.value().items()) {
       const std::string &nameOfTheAttackedFeature = ruleAndTypes.key();
-      const index_t attackedFeatureIndex =
+      const auto attackedFeatureIndexOpt =
           dataset.getFeatureIndex(nameOfTheAttackedFeature);
+      if (!attackedFeatureIndexOpt.has_value()) {
+        std::cout << "WARNING: cannot find a column with name '"
+                  << nameOfTheAttackedFeature
+                  << "' in the dataset, the attacker rule won't be created\n";
+        continue;
+      }
+      const index_t attackedFeatureIndex = attackedFeatureIndexOpt.value();
       //
       // For each feature name I can have more than one rule
       for (const auto &type : ruleAndTypes.value().items()) {

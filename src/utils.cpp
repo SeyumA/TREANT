@@ -319,6 +319,7 @@ OptimizeOutput optimizeOnSubset(
   ret.bestSSEuma = 0.0f;
 
   for (const auto &splittingFeature : validFeaturesSubset) {
+    std::cout << "Analyzing feature " << splittingFeature << std::endl;
     // Build a set of unique feature values
     bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
     // If not numerical the order can change with respect of dictionary
