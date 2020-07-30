@@ -3,16 +3,18 @@
 //
 
 #include "utils.h"
-#include "Dataset.h"
 #include "Attacker.h"
+#include "Dataset.h"
 #include "Logger.h"
 #include <iostream>
 #include <regex>
 #include <set>
+#include <unistd.h>
 
 // NLOPT test
 #include <cmath>
 #include <nlopt.hpp>
+#include <thread>
 
 #include "Node.h"
 
@@ -309,6 +311,7 @@ OptimizeOutput optimizeOnSubset(
     const indexes_t &validInstances, const std::vector<Constraint> &constraints,
     const double &currentScore, const double &currentPredictionScore,
     const bool &useICML2019) {
+//  const auto start = std::chrono::steady_clock::now();
   auto ret = OptimizeOutput();
   ret.bestGain = -1.0f;
   ret.bestSplitFeatureId = *validFeaturesSubset.begin();
@@ -319,7 +322,8 @@ OptimizeOutput optimizeOnSubset(
   ret.bestSSEuma = 0.0f;
 
   for (const auto &splittingFeature : validFeaturesSubset) {
-    std::cout << "Analyzing feature " << splittingFeature << std::endl;
+//    std::cout << "Analyzing feature " << splittingFeature << " on thread "
+//              << std::this_thread::get_id() << std::endl;
     // Build a set of unique feature values
     bool isNumerical = dataset.isFeatureNumerical(splittingFeature);
     // If not numerical the order can change with respect of dictionary
@@ -337,6 +341,8 @@ OptimizeOutput optimizeOnSubset(
           }
           return ret;
         }(dataset, splittingFeature);
+//    std::cout << "\tUnique feature values are " << uniqueFeatureValues.size()
+//              << std::endl;
 
     for (auto it = uniqueFeatureValues.begin(); it != uniqueFeatureValues.end();
          ++it) {
@@ -404,6 +410,14 @@ OptimizeOutput optimizeOnSubset(
       }
     } // end loop on feature values
   }   // end loop on valid features
+
+//  const auto end = std::chrono::steady_clock::now();
+//  std::cout << "\tThread nr. " << std::this_thread::get_id() << " time = "
+//            << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+//                                                                     start)
+//                   .count()
+//            << " milliseconds." << std::endl;
+
   return ret;
 }
 
@@ -466,10 +480,8 @@ std::tuple<indexes_t, indexes_t, indexes_t> simulateSplit(
   return {leftSplit, rightSplit, unknownSplit};
 }
 
-double sseICML2019(const indexes_t &firstPart,
-                                   const indexes_t &secondPart,
-                                   const label_t *yTrue,
-                                   const prediction_t &yPred) {
+double sseICML2019(const indexes_t &firstPart, const indexes_t &secondPart,
+                   const label_t *yTrue, const prediction_t &yPred) {
   // see in the python code __sse static method
   double sum = 0.0;
   for (const auto i : firstPart) {
@@ -484,11 +496,9 @@ double sseICML2019(const indexes_t &firstPart,
 }
 
 std::optional<std::tuple<label_t, label_t, gain_t>>
-lossICML2019(const indexes_t &icmlLeftFirst,
-                             const indexes_t &icmlLeftSecond,
-                             const indexes_t &icmlRightFirst,
-                             const indexes_t &icmlRightSecond,
-                             const label_t *y) {
+lossICML2019(const indexes_t &icmlLeftFirst, const indexes_t &icmlLeftSecond,
+             const indexes_t &icmlRightFirst, const indexes_t &icmlRightSecond,
+             const label_t *y) {
 
   // see __icml_split_loss in the python code
   const auto lenLeft = icmlLeftFirst.size() + icmlLeftSecond.size();
@@ -655,8 +665,7 @@ std::tuple<indexes_t, indexes_t, indexes_t, bool> simulateSplitICML2019(
 }
 
 std::vector<indexes_t> buildBatches(const unsigned &numThreads,
-                                    const indexes_t &validFeatures)
-{
+                                    const indexes_t &validFeatures) {
   std::vector<std::vector<index_t>> ret;
   if (!numThreads) {
     throw std::runtime_error("Invalid number of threads");
@@ -676,6 +685,65 @@ std::vector<indexes_t> buildBatches(const unsigned &numThreads,
     }
   }
   return ret;
+}
+
+std::tuple<std::string, std::string, std::size_t, cost_t, int> parseArguments(const int argc, char *const *argv)
+{
+  std::string attackerFile, datasetFile;
+  std::size_t maxDepth = 1; // default maxDepth value is 1
+  cost_t budget = 0.0f;     // default value is 0.0
+  int threads = 1;          // default value is 1, sequential execution
+  // parse the arguments
+  {
+    double bflag = budget;
+    int dflag = maxDepth;
+    int jflag = threads;
+    int c;
+    opterr = 0;
+
+    // -a and -f are mandatory
+    while ((c = getopt(argc, argv, "a:b:d:f:j:")) != -1)
+      switch (c) {
+      case 'a':
+        attackerFile = std::string(optarg);
+        break;
+      case 'b':
+        bflag = std::stod(std::string(optarg));
+        if (budget < 0.0) {
+          throw std::runtime_error(
+              "Invalid budget argument: it must be >= 0.0");
+        }
+        budget = bflag;
+        break;
+      case 'd':
+        dflag = std::stoi(std::string(optarg));
+        if (dflag < 0) {
+          throw std::runtime_error("Invalid depth argument: it must be >= 0");
+        }
+        maxDepth = dflag;
+        break;
+      case 'f':
+        datasetFile = std::string(optarg);
+        break;
+      case 'j':
+        jflag = std::stoi(std::string(optarg));
+        if (jflag < 1) {
+          throw std::runtime_error(
+              "Invalid threads argument: it must be > 0");
+        }
+        threads = jflag;
+        break;
+      case '?':
+        if (isprint(optopt)) {
+          fprintf(stderr, "Unknown option '-%c'.\n", optopt);
+        }
+        throw std::runtime_error(
+            "Unknown option character, valids are: -a, -b, -d, -f, -j");
+      default:
+        abort();
+      }
+  }
+  return {attackerFile, datasetFile, maxDepth, budget, threads};
 }
 
 } // namespace utils

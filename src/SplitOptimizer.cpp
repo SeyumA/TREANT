@@ -113,6 +113,7 @@ bool SplitOptimizer::optimizeGain(
       }
     }
   }
+  std::cout << "End of reduction phase" << std::endl;
 //  const auto end = std::chrono::steady_clock::now();
 //  std::cout << "Time elapsed in parallel SplitOptimer: "
 //            << std::chrono::duration_cast<std::chrono::milliseconds>(end -

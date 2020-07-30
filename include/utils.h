@@ -91,6 +91,8 @@ std::tuple<indexes_t, indexes_t, indexes_t, bool> simulateSplitICML2019(
 std::vector<indexes_t> buildBatches(const unsigned &numThreads,
                                     const indexes_t &validFeatures);
 
+std::tuple<std::string, std::string, std::size_t, cost_t, int> parseArguments(const int argc, char *const *argv);
+
 } // namespace utils
 
 #endif // TREEANT_UTILS_H

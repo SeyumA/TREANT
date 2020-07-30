@@ -288,5 +288,8 @@ Attacker::attack(const record_t &instance, const index_t &featureId,
       }
     }
   }
+//  if (ret.size() > 1) {
+//    std::cout << "Feature attacked is " << featureId << std::endl;
+//  }
   return ret;
 }
