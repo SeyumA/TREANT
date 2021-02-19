@@ -1,9 +1,11 @@
 # TREANT
 
 This repository contains the source code associated with the method proposed by Calzavara _et al._ in their ... research paper entitled "_TREANT: Training Evasion-Aware Decision Trees_" \[more information available at: [arXiv.org](https://arxiv.org/abs/1907.01197)\]<br />
-The name [TREANT](https://en.wikipedia.org/wiki/Treant) comes from the "_Dungeons & Dragons_" roleplaying game, where it identifies giant tree-like fictional creatures.
+The name [TREANT](https://en.wikipedia.org/wiki/Treant) comes from the "_Dungeons & Dragons_" roleplaying game, where it identifies giant tree-like fictional creatures. Overview of the Treant construction and its key challenges are depicted in the following figure
 
-
+<p align="center">
+  <img src="Images/tre.PNG" caption="TREANT structure" width="50%" height="50%"/>
+</p>
 
 
 # Goal
