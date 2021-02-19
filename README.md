@@ -4,7 +4,7 @@ This repository contains the source code associated with the method proposed by 
 The name [TREANT](https://en.wikipedia.org/wiki/Treant) comes from the "_Dungeons & Dragons_" roleplaying game, where it identifies giant tree-like fictional creatures. Overview of the Treant construction and its key challenges are depicted in the following figure
 
 <p align="center">
-  <img src="Images/tre.PNG" caption="TREANT structure" width="50%" height="50%"/>
+  <img src="Images/tre.PNG" caption="TREANT structure" width="60%" height="60%"/>
 </p>
 
 
