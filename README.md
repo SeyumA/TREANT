@@ -4,26 +4,34 @@ This repository contains the source code associated with the method proposed by 
 The name [TREANT](https://en.wikipedia.org/wiki/Treant) comes from the "_Dungeons & Dragons_" roleplaying game, where it identifies giant tree-like fictional creatures.
 
 
-```bash
-├── 3rdparty
-│   └── nlopt-2.6.1
-│       ├── include
-│       └── lib
-```
+# Goal
 
-The nlopt is a library used to solve the optimization problem.
-Follow the guide at:
-https://nlopt.readthedocs.io/en/latest/NLopt_Installation/
-install in local folder using:
+Describe the goal of this project...
+
+# Structure
+
+Describe the structure of this project...
+
+# Usage
+
+Describe how to run the pipeline...
+
+# Credit
+
+If you use this implementation in your work, please add a reference/citation to our paper. You can use the following BibTeX entry:
 
 ```bash
-cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/install ..
+@inproceedings{DBLP:conf/...,
+  author    = {Stefano Calzavara and Claudio Lucchese and Gabriele Tolomei and Seyum Assefa Abebe and Salvatore Orlando},
+  title     = {TREANT: Training Evasion-Aware Decision Trees},
+  booktitle = {},
+  pages     = {},
+  year      = {},
+  crossref  = {},
+  url       = {},
+  doi       = {},
+  timestamp = {},
+  biburl    = {},
+  bibsource = {}
+}
 ```
-
-(see "Changing the installation directory" chapter).
-After:
-```bash
-make install
-```
-the installation folder will contain the include and lib folder.
-Tested using static libraries: add -DBUILD_SHARED_LIBS=OFF to cmake flags.
