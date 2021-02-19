@@ -1,11 +1,8 @@
-# TreeAnt
+# TREANT
 
-This is a private repo to host the Msc Thesis work of Davide Girardini with Prof. Lucchese as supervisor.
+This repository contains the source code associated with the method proposed by Calzavara _et al._ in their ... research paper entitled "_TREANT: Training Evasion-Aware Decision Trees_" \[more information available at: [arXiv.org](https://arxiv.org/abs/1907.01197)\]<br />
+The name [TREANT](https://en.wikipedia.org/wiki/Treant) comes from the "_Dungeons & Dragons_" roleplaying game, where it identifies giant tree-like fictional creatures.
 
-Prof. Lucchese and Ph.D student Seyum will have permission to manage the repo.
-
-In the project folder you must include a folder 3rdparty with the required third party libraries:
-(see FindNlopt.cmake).
 
 ```bash
 ├── 3rdparty
